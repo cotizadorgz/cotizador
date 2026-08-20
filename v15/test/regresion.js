@@ -172,6 +172,34 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
         n[0] === "Precio de lista" && n[1] === "Sin factura" && n[2] === "Con factura" && n[3] === "MercadoLibre", n.join(" · "));
 }
 
+// ── Medidas en el texto al cliente ───────────────────────────────────────────
+{
+  const et = (pid, e) => etiquetaCliente(PERFILES[pid], cotizar(PERFILES[pid], { enchapado: true, ...e }).entrada);
+  const conMedida = {
+    ev:   [{ secciones: 6, ancho: 0.5 },  "Evaporador estático 5/8\" 6 sec x 0,50m"],
+    fd:   [{ secciones: 5, ancho: 0.4 },  "Forzador lateral doble 5/8\" 5 sec x 0,40m"],
+    col:  [{ secDobles: 3, ancho: 3.7, uniones: 2 }, "Columna para batea 5/8\" 3 sec x 3,70m"],
+    da:   [{ secciones: 6, ancho: 0.6 },  "Forzador doble ataque 6 sec x 0,60m"],
+    pt:   [{ secciones: 3, ancho: 1.25, hp: 0.5 }, "Forzador de piso para torteras 1/2HP 3 sec x 1,25m"]
+  };
+  for (const [pid, [entrada, esperado]] of Object.entries(conMedida)) {
+    chkOk("Medidas en el texto", `${pid} lleva la medida`, et(pid, entrada) === esperado, et(pid, entrada));
+  }
+  // Estos no la llevan nunca.
+  const sinMedida = {
+    cub:  [{ hp: 2, bateria: "5F6C", ancho: 0.9 }, "Forzador cúbico de cámara 2HP"],
+    rcam: [{ hp: 2, secDobles: 10, ancho: 1.2 }, "Forzador respaldo de cámara 2HP"],
+    t58:  [{ hp: 0.75, secciones: 8, ancho: 0.35, bandeja: 1000 }, "Forzador de techo 5/8\" 3/4HP"],
+    t38:  [{ hp: 0.5, secciones: 24, ancho: 0.33, bandeja: 800 }, "Forzador de techo 3/8\" 1/2HP"],
+    car:  [{ dobles: false, ancho: 1.8, cantVent: 3, modelo: "Mod.124" }, "Respaldo para carniceras Mod.124"]
+  };
+  for (const [pid, [entrada, esperado]] of Object.entries(sinMedida)) {
+    chkOk("Medidas en el texto", `${pid} NO lleva la medida`, et(pid, entrada) === esperado, et(pid, entrada));
+  }
+  chkOk("Medidas en el texto", "Siempre dos decimales",
+        et("ev", { secciones: 6, ancho: 0.5 }).includes("0,50m") && et("col", { secDobles: 3, ancho: 3.7, uniones: 0 }).includes("3,70m"));
+}
+
 // ── Historial ────────────────────────────────────────────────────────────────
 // Con una llave aparte, para no tocar el historial real de quien esté probando.
 {

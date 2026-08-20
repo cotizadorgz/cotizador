@@ -2,10 +2,17 @@
 // del motor: el motor sólo sabe sumar batería + ventiladores + adicionales.
 
 import { PRECIOS, VENT_DEFAULTS, PT_VENT_CANT, tramo } from "./precios.js";
-import { redondeo075, VENT_CERO, fmtHP } from "./motor.js";
+import { redondeo075, VENT_CERO, fmtHP, fmtM } from "./motor.js";
 
 const v = (tipo, cant) => ({ ...VENT_CERO, [tipo]: cant });
 const num = n => String(n).replace(".", ",");   // 0.9 → 0,9 en el desglose
+
+// Medida que sale en el texto al cliente: "5 sec x 0,40m". Los productos que no la
+// declaran no la muestran: cúbico, respaldo de cámara, carniceras, condensador y los
+// dos de techo — en el techo el ancho es el de la batería, igual en todos los modelos,
+// así que no le dice nada al cliente.
+const medidaSec = e => `${e.secciones} sec x ${fmtM(e.ancho)}m`;
+const medidaDobles = e => `${e.secDobles} sec x ${fmtM(e.ancho)}m`;
 
 // Campos de entrada de cada producto, como datos. La pantalla los dibuja sola.
 const N = (id, label, step = 0.01, si) => ({ id, label, tipo: "num", step, si });
@@ -28,6 +35,7 @@ export const PERFILES = {
 
   ev: {
     id: "ev", nombre: "Evaporador estático 5/8\"", familia: "estatico",
+    medida: medidaSec,
     campos: [N("secciones","Secciones",1), A()],
     ventDefault: sinVent,
     bateria: (e, P) => ({ concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m`, importe: e.secciones * e.ancho * P.tarifas.seccionSimple58 }),
@@ -40,6 +48,7 @@ export const PERFILES = {
 
   oli: {
     id: "oli", nombre: "Evaporador estático compacto 3/8\"", familia: "estatico",
+    medida: medidaSec,
     campos: [N("secciones","Secciones",1), A()],
     ventDefault: sinVent,
     bateria: (e, P) => ({ concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m`, importe: e.secciones * e.ancho * P.tarifas.compacto38 }),
@@ -51,6 +60,7 @@ export const PERFILES = {
 
   resp: {
     id: "resp", nombre: "Respaldar estático 5/8\"", familia: "estatico",
+    medida: medidaSec,
     campos: [N("secciones","Secciones",1), A()],
     ventDefault: sinVent,
     bateria: (e, P) => ({
@@ -61,6 +71,7 @@ export const PERFILES = {
 
   fd: {
     id: "fd", nombre: "Forzador lateral doble 5/8\"", familia: "lateral",
+    medida: medidaSec,
     campos: [N("secciones","Secciones dobles",1), A()],
     chapa: true,
     textoSinChapa: "sin enchapar y sin ventilador",
@@ -77,6 +88,7 @@ export const PERFILES = {
 
   fs: {
     id: "fs", nombre: "Forzador lateral simple 5/8\"", familia: "lateral",
+    medida: medidaSec,
     campos: [N("secciones","Secciones",1), A()],
     chapa: true,
     textoSinChapa: "sin enchapar y sin ventilador",
@@ -90,6 +102,7 @@ export const PERFILES = {
 
   fc: {
     id: "fc", nombre: "Forzador lateral compacto 3/8\"", familia: "lateral",
+    medida: medidaSec,
     campos: [N("secciones","Secciones",1), A()],
     chapa: true,
     textoSinChapa: "sin enchapar y sin ventilador",
@@ -107,6 +120,7 @@ export const PERFILES = {
 
   col: {
     id: "col", nombre: "Columna para batea 5/8\"", familia: "columna",
+    medida: medidaDobles,
     campos: [N("secDobles","Secciones dobles",1), A(), N("uniones","Uniones",1)],
     defaults: { uniones: 0 },
     ventDefault: sinVent,
@@ -209,6 +223,7 @@ export const PERFILES = {
 
   da: {
     id: "da", nombre: "Forzador doble ataque", familia: "lateral",
+    medida: medidaSec,
     campos: [S("secciones","Secciones dobles", [[5,"5"],[6,"6"],[7,"7"]]), A()],
     ventTarifa: "fija",
     ventDefault: () => v("v200", 2),
@@ -248,6 +263,7 @@ export const PERFILES = {
 
   pt: {
     id: "pt", nombre: "Forzador de piso para torteras", familia: "piso",
+    medida: medidaSec,
     campos: [S("secciones","Secciones", [[3,"3"],[4,"4"]]), A()],
     chapa: true,
     textoSinChapa: "sin enchapar y sin ventilador",

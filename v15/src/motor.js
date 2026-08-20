@@ -167,12 +167,15 @@ export function encabezado({ cliente, fecha = new Date() } = {}) {
 const HP_TEXTO = { 0.25: "1/4", 0.33: "1/3", 0.5: "1/2", 0.75: "3/4" };
 export const fmtHP = hp => (HP_TEXTO[hp] || String(hp).replace(".", ","));
 export const fmtARS = n => "$ " + Math.round(n).toLocaleString("es-AR");
+export const fmtM = n => Number(n).toFixed(2).replace(".", ",");
 export const fmtUSD = n => "USD " + n.toFixed(2).replace(".", ",");
 
 export function etiquetaCliente(perfil, e, P = PRECIOS) {
   let t = perfil.nombre;
   if (e.hp) t += ` ${fmtHP(e.hp)}HP`;
   if (e.modelo) t += ` ${e.modelo}`;
+  // Algunos productos se identifican por la medida y otros no: lo decide el perfil.
+  if (perfil.medida) t += ` ${perfil.medida(e)}`;
   if (perfil.chapa && !e.enchapado && perfil.textoSinChapa) t += ` — ${perfil.textoSinChapa}`;
   if (e.reforzado) t += " — con ventiladores 300mm reforzados";
   if (e.bajaTemp && perfil.bajaTemp) t += " — incluye opcional Baja Temperatura";
