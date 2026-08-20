@@ -54,7 +54,7 @@ const pedidoGuardado = JSON.parse(localStorage.getItem(LLAVE_PED) || '{"lineas":
 // ── Estado de la pantalla ────────────────────────────────────────────────────
 const estado = {
   pid: null, modo: "modelo", modelo: 0, entrada: {}, vents: null,
-  filas: new Set(), eligiendo: false,
+  filas: new Set(), eligiendo: false, calculado: false,
   lineas: pedidoGuardado.lineas || [],
   // El embalaje arranca en 0 salvo que hayas dejado un pedido a medio armar:
   // ahí se restaura junto con los ítems.
@@ -79,6 +79,7 @@ function entradaDesdeModelo(pid, i) {
 function elegirProducto(pid) {
   estado.pid = pid;
   estado.eligiendo = false;
+  estado.calculado = false;
   estado.modo = tieneCatalogo(pid) ? "modelo" : "libre";
   estado.modelo = 0;
   estado.vents = null;
@@ -122,7 +123,7 @@ function dibujarModos() {
     b.onclick = () => {
       estado.modo = modo; estado.vents = null;
       if (modo === "modelo") estado.entrada = { ...estado.entrada, ...entradaDesdeModelo(estado.pid, estado.modelo) };
-      render();
+      invalidar(); render();
     };
     cont.appendChild(b);
   }
@@ -142,7 +143,7 @@ function dibujarCatalogo() {
   sel.onchange = () => {
     estado.modelo = +sel.value; estado.vents = null;
     estado.entrada = { ...estado.entrada, ...entradaDesdeModelo(estado.pid, estado.modelo) };
-    render();
+    invalidar(); render();
   };
   lab.appendChild(sel);
   const caja = el("div", "campos"); caja.appendChild(lab);
@@ -168,12 +169,12 @@ function dibujarCampos() {
       campo.onchange = () => {
         const bruto = campo.value;
         estado.entrada[c.id] = bruto === "true" ? true : bruto === "false" ? false : (isNaN(+bruto) ? bruto : +bruto);
-        estado.vents = null; render();
+        estado.vents = null; invalidar(); render();
       };
     } else {
       campo = el("input"); campo.type = "number"; campo.step = c.step; campo.inputMode = "decimal";
       campo.value = estado.entrada[c.id] ?? "";
-      campo.oninput = () => { estado.entrada[c.id] = campo.value === "" ? "" : +campo.value; estado.vents = null; recalcular(); };
+      campo.oninput = () => { estado.entrada[c.id] = campo.value === "" ? "" : +campo.value; estado.vents = null; invalidar(); };
     }
     campo.disabled = soloLectura;
     lab.appendChild(campo);
@@ -204,12 +205,12 @@ function dibujarOpciones() {
   }
   if (p.bajaTemp) {
     cont.appendChild(tildable("bajaTemp", "Baja temperatura (× 1,80)",
-      estado.entrada.bajaTemp, v => { estado.entrada.bajaTemp = v; recalcular(); }));
+      estado.entrada.bajaTemp, v => { estado.entrada.bajaTemp = v; invalidar(); }));
   }
   // Casillas propias del producto, declaradas en el perfil.
   for (const o of p.opciones || []) {
     cont.appendChild(tildable(o.id, o.label, !!estado.entrada[o.id],
-      v => { estado.entrada[o.id] = v; estado.vents = null; render(); }));
+      v => { estado.entrada[o.id] = v; estado.vents = null; invalidar(); render(); }));
   }
 }
 
@@ -244,7 +245,7 @@ function dibujarVentiladores() {
       base[tipo] = Math.max(0, n);
       if (estado.entrada.reforzado) estado.entrada.cantReforzados = base[tipo];
       else estado.vents = base;
-      render();
+      invalidar(); render();
     };
     menos.onclick = () => fijar((actuales[tipo] || 0) - 1);
     mas.onclick = () => fijar((actuales[tipo] || 0) + 1);
@@ -433,12 +434,22 @@ function dibujarPresupuesto() {
 // ── Ciclo ────────────────────────────────────────────────────────────────────
 let ultima = null;
 
+// Cambiar cualquier cosa del producto apaga el resultado: si está en pantalla,
+// es porque corresponde a lo que hay cargado ahora.
+function invalidar() {
+  estado.calculado = false;
+  ultima = null;
+  $("resultado").hidden = true;
+  $("btnCalcular").disabled = !estado.pid || !entradaCompleta();
+}
+
 function entradaCompleta() {
   return camposVisibles().every(c => estado.entrada[c.id] !== "" && estado.entrada[c.id] != null);
 }
 
 function recalcular() {
-  if (!estado.pid || !entradaCompleta()) { $("resultado").hidden = true; ultima = null; return; }
+  $("btnCalcular").disabled = !estado.pid || !entradaCompleta();
+  if (!estado.pid || !estado.calculado || !entradaCompleta()) { $("resultado").hidden = true; ultima = null; return; }
   // El embalaje no es de este ítem sino del pedido: se suma una sola vez abajo.
   const entrada = {
     ...estado.entrada,
@@ -480,13 +491,19 @@ $("btnCopiar").onclick = async () => {
   setTimeout(() => { b.textContent = antes; }, 1800);
 };
 
-$("cantidad").oninput = recalcular;
+$("cantidad").oninput = invalidar;
 $("embalaje").oninput = () => {
   estado.embalaje = +$("embalaje").value || 0;
   guardarPedido(); recalcular(); dibujarPresupuesto();
 };
 
 $("cliente").oninput = () => { estado.cliente = $("cliente").value; guardarPedido(); };
+
+$("btnCalcular").onclick = () => {
+  estado.calculado = true;
+  recalcular();
+  $("resultado").scrollIntoView({ behavior: "smooth", block: "nearest" });
+};
 
 $("btnCambiar").onclick = () => { estado.eligiendo = true; render(); };
 

@@ -4,7 +4,7 @@
 // Estrategia: RED PRIMERO, cache como respaldo. Es una app de precios: vale más
 // esperar medio segundo y cotizar con la lista de hoy que responder al instante
 // con una copia vieja. Sin señal, el cache contesta y la app abre igual.
-const CACHE = "gz-v15-7";
+const CACHE = "gz-v15-8";
 const ARCHIVOS = [
   "./", "./index.html", "./manifest.json", "./logo.jpg",
   "./icono-180.png", "./icono-192.png", "./icono-512.png",
