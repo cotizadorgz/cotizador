@@ -1,0 +1,280 @@
+/* Todas las variables están definidas acá. La v14 usaba 5 que no existían y por eso
+   el selector de ventiladores salía sin bordes y con el texto negro. */
+:root {
+  --navy: #0D2D6E;
+  --royal: #1A4BB5;
+  --fondo: #eef2fb;
+  --fondo2: #e2e9f7;
+  --tarjeta: #ffffff;
+  --borde: #c8d8f0;
+  --borde2: #a0b8e0;
+  --texto: #0a1a3a;
+  --texto2: #3a5080;
+  --texto3: #6f8ab4;
+  --ml: #00a650;
+  --ok: #1a7a4a;
+  --error: #b3261e;
+  --error-fondo: #fdecea;
+  --aviso: #8a5a00;
+  --aviso-fondo: #fff6e0;
+  --radio: 12px;
+  --sombra: 0 1px 2px rgba(13,45,110,.08), 0 4px 16px rgba(13,45,110,.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #0b1220;
+    --fondo2: #111b2e;
+    --tarjeta: #151f33;
+    --borde: #27354f;
+    --borde2: #38496a;
+    --texto: #e6edf8;
+    --texto2: #a9bcdc;
+    --texto3: #7489ad;
+    --error-fondo: #3a1c1a;
+    --aviso-fondo: #33280d;
+    --sombra: none;
+  }
+}
+
+* { box-sizing: border-box; }
+
+/* Sin esto, cualquier elemento con display propio (flex, grid) ignora el atributo
+   hidden y se sigue viendo. Era por qué las pestañas Modelo/A medida aparecían en
+   productos que no tienen catálogo. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  padding: 0 0 env(safe-area-inset-bottom);
+  background: var(--fondo);
+  color: var(--texto);
+  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ── Cabecera ── */
+.cab {
+  background: linear-gradient(135deg, var(--navy), var(--royal));
+  color: #fff;
+  padding: 14px 16px calc(14px + env(safe-area-inset-top));
+  padding-top: calc(14px + env(safe-area-inset-top));
+  display: flex; flex-wrap: wrap; gap: 14px;
+  align-items: center; justify-content: space-between;
+}
+.cab-tit { display: flex; align-items: center; gap: 12px; }
+/* El logo es un JPEG con fondo blanco, así que va sobre una placa blanca a propósito
+   en vez de quedar como un recuadro suelto encima del degradé. */
+.marca {
+  width: 124px; height: auto; display: block;
+  background: #fff; border-radius: 8px; padding: 6px 9px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+@media (max-width: 420px) {
+  .marca { width: 104px; }
+  .cab { gap: 10px; padding-left: 12px; padding-right: 12px; }
+  .dol input { width: 78px; }
+}
+.cab h1 { margin: 0; font-size: 18px; font-weight: 700; }
+.cab .sub { margin: 0; font-size: 11px; opacity: .75; }
+
+.dolares { display: flex; gap: 10px; }
+.dol { display: flex; flex-direction: column; gap: 2px; font-size: 11px; }
+.dol span { opacity: .8; }
+.dol input {
+  width: 92px; padding: 6px 8px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.28);
+  background: rgba(255,255,255,.14); color: #fff;
+  font-size: 14px; font-weight: 600; font-family: inherit;
+}
+.dol em { font-style: normal; font-size: 10px; opacity: .7; }
+.dol em.err { color: #ffd9d5; opacity: 1; }
+
+/* ── Estructura ── */
+main { max-width: 780px; margin: 0 auto; padding: 14px; display: grid; gap: 14px; }
+.tarjeta {
+  background: var(--tarjeta); border: 1px solid var(--borde);
+  border-radius: var(--radio); padding: 14px; box-shadow: var(--sombra);
+}
+.tarjeta h2 {
+  margin: 0 0 10px; font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .7px; color: var(--texto2);
+}
+
+/* ── Selector de producto ── */
+.elegido { display: flex; align-items: center; gap: 10px; }
+#nombreElegido { flex: 1; font-size: 16px; font-weight: 600; }
+#btnCambiar {
+  padding: 8px 14px; border-radius: 9px; cursor: pointer; font: inherit; font-size: 13px;
+  border: 1px solid var(--borde2); background: var(--fondo2); color: var(--texto2);
+}
+
+.productos { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.productos button {
+  text-align: left; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--borde); background: var(--fondo2);
+  color: var(--texto); font: inherit; font-size: 13px; cursor: pointer;
+}
+.productos button:hover { border-color: var(--borde2); }
+.productos button[aria-pressed="true"] {
+  background: var(--navy); border-color: var(--navy); color: #fff; font-weight: 600;
+}
+
+/* ── Modos catálogo / a medida ── */
+.modos { display: flex; gap: 6px; margin-bottom: 12px; }
+.modos button {
+  flex: 1; padding: 8px; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--borde); background: var(--fondo2);
+  color: var(--texto2); font: inherit; font-size: 13px;
+}
+.modos button[aria-pressed="true"] {
+  background: var(--royal); border-color: var(--royal); color: #fff; font-weight: 600;
+}
+
+/* ── Campos ── */
+.campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.campos label, .vents label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--texto2); }
+.campos label em { font-style: normal; color: var(--texto3); }
+input[type=number], input[type=text], select {
+  padding: 9px 10px; border-radius: 9px;
+  border: 1px solid var(--borde2); background: var(--tarjeta);
+  color: var(--texto); font: inherit; font-size: 15px; width: 100%;
+}
+input[type=number]:focus, input[type=text]:focus, select:focus { outline: 2px solid var(--royal); outline-offset: -1px; }
+
+/* ── Opciones ── */
+.opciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.chk {
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  padding: 8px 12px; border-radius: 9px;
+  border: 1px solid var(--borde); background: var(--fondo2); font-size: 13px;
+}
+.chk input { width: 17px; height: 17px; accent-color: var(--royal); }
+.chk[data-on="true"] { border-color: var(--royal); background: color-mix(in srgb, var(--royal) 10%, transparent); }
+
+/* ── Ventiladores ── */
+.vents { margin-top: 12px; border-top: 1px dashed var(--borde); padding-top: 12px; }
+.vents h3 { margin: 0 0 8px; font-size: 12px; color: var(--texto2); font-weight: 700; text-transform: uppercase; letter-spacing: .7px; }
+.vents-fila { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+.vents-fila .nom { flex: 1; font-size: 14px; }
+.vents-fila .precio { color: var(--texto3); font-size: 12px; }
+.stepper { display: flex; align-items: center; gap: 6px; }
+.stepper button {
+  width: 32px; height: 32px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--borde2); background: var(--fondo2);
+  color: var(--texto); font: inherit; font-size: 17px; line-height: 1;
+}
+.stepper span { min-width: 22px; text-align: center; font-weight: 700; }
+
+/* ── Resultado ── */
+.desglose, .panel-tabla { width: 100%; border-collapse: collapse; font-size: 14px; }
+.desglose td, .panel-tabla td { padding: 5px 0; border-bottom: 1px solid var(--borde); }
+.desglose td:last-child, .panel-tabla td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.desglose tr:last-child td { border-bottom: 0; font-weight: 700; }
+.desglose .ajuste td:first-child::after {
+  content: "ajuste"; margin-left: 7px; font-size: 10px; padding: 1px 6px;
+  border-radius: 20px; background: var(--aviso-fondo); color: var(--aviso);
+}
+
+.precios { margin-top: 14px; display: grid; gap: 6px; }
+.precio-fila {
+  display: grid; grid-template-columns: 26px 1fr auto auto; gap: 10px;
+  align-items: center; padding: 9px 10px; border-radius: 10px;
+  border: 1px solid var(--borde); background: var(--fondo2); cursor: pointer;
+}
+.precio-fila[data-on="true"] { border-color: var(--royal); }
+.precio-fila.ml { border-left: 4px solid var(--ml); }
+.precio-fila .tilde {
+  width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--borde2);
+  display: grid; place-items: center; font-size: 14px; color: #fff; background: var(--tarjeta);
+}
+.precio-fila[data-on="true"] .tilde { background: var(--royal); border-color: var(--royal); }
+.precio-fila .nom { font-size: 13px; }
+.precio-fila .nom em { display: block; font-style: normal; font-size: 10px; color: var(--texto3); }
+.precio-fila .usd { font-size: 12px; color: var(--texto2); font-variant-numeric: tabular-nums; }
+.precio-fila .ars { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.copiar {
+  margin-top: 12px; width: 100%; padding: 13px; border: 0; border-radius: 11px;
+  background: linear-gradient(135deg, var(--navy), var(--royal));
+  color: #fff; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+}
+.copiar:disabled { opacity: .5; cursor: default; }
+.pista { margin: 8px 0 0; font-size: 11px; color: var(--texto3); text-align: center; }
+
+.aviso {
+  padding: 9px 12px; border-radius: 9px; margin-bottom: 10px; font-size: 13px;
+  background: var(--aviso-fondo); color: var(--aviso);
+}
+.aviso.error { background: var(--error-fondo); color: var(--error); }
+
+footer { padding: 18px; text-align: center; }
+
+/* ── Panel de precios ── */
+.btn-panel {
+  border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.14);
+  color: #fff; font: inherit; font-size: 13px; font-weight: 600;
+  padding: 9px 16px; border-radius: 9px; cursor: pointer;
+}
+.btn-panel[aria-pressed="true"] { background: #fff; color: var(--navy); }
+.pista-izq { text-align: left; margin: -4px 0 12px; }
+.panel-barra { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.panel-cuenta { font-size: 12px; color: var(--texto3); }
+.panel-cuenta.tocado { color: var(--aviso); font-weight: 600; }
+.panel-acciones { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
+.panel-acciones button {
+  padding: 8px 12px; border-radius: 9px; cursor: pointer; font: inherit; font-size: 13px;
+  border: 1px solid var(--borde2); background: var(--fondo2); color: var(--texto);
+}
+.panel-acciones button.peligro { border-color: var(--error); color: var(--error); }
+.panel-verif:empty { display: none; }
+.panel-verif { margin-bottom: 10px; }
+.aviso.ok { background: color-mix(in srgb, var(--ok) 12%, transparent); color: var(--ok); }
+.panel-grupo { border: 1px solid var(--borde); border-radius: 10px; margin-bottom: 8px; }
+.panel-grupo summary {
+  padding: 10px 12px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--texto2);
+}
+.panel-grupo[open] summary { border-bottom: 1px solid var(--borde); }
+.panel-grupo .campos { padding: 12px; }
+.panel-grupo label span em.tocado { font-style: normal; color: var(--aviso); font-weight: 700; }
+
+/* ── Presupuesto ── */
+/* .copiar es 100% de ancho por sí solo; dentro de la botonera reparte el espacio. */
+.botonera { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.botonera .copiar { margin-top: 0; width: auto; flex: 1 1 auto; min-width: 0; }
+.copiar.secundario {
+  background: none; border: 1px solid var(--borde2); color: var(--texto);
+  font-weight: 600;
+}
+.copiar.secundario.peligro { border-color: var(--error); color: var(--error); flex: 0 1 auto; padding: 13px 22px; }
+#lineas .panel-tabla td:first-child { width: 100%; }
+#lineas .panel-tabla td:nth-child(2) { text-align: right; white-space: nowrap; padding-left: 12px; }
+#lineas .panel-tabla td:last-child { text-align: right; padding-left: 8px; width: 1%; }
+.quitar {
+  width: 26px; height: 26px; border-radius: 7px; cursor: pointer; line-height: 1;
+  border: 1px solid var(--borde2); background: var(--fondo2); color: var(--texto2);
+  font: inherit; font-size: 15px;
+}
+.quitar:hover { border-color: var(--error); color: var(--error); }
+
+/* ── Historial ── */
+.hist-dia {
+  margin: 14px 0 6px; font-size: 11px; font-weight: 700; letter-spacing: .7px;
+  text-transform: uppercase; color: var(--texto3);
+}
+.hist-dia:first-child { margin-top: 0; }
+.hist-item { border: 1px solid var(--borde); border-radius: 10px; margin-bottom: 6px; }
+.hist-item summary {
+  padding: 10px 12px; cursor: pointer; display: flex; align-items: baseline; gap: 10px;
+}
+.hist-hora { font-size: 12px; color: var(--texto3); font-variant-numeric: tabular-nums; }
+.hist-que { flex: 1; font-size: 13px; }
+.hist-monto { font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hist-item[open] summary { border-bottom: 1px solid var(--borde); }
+.hist-cuerpo { padding: 12px; }
+.hist-texto {
+  margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--fondo2);
+  font: 12px/1.5 ui-monospace, Menlo, monospace; color: var(--texto2);
+  white-space: pre-wrap; overflow-x: auto;
+}
+.hist-dolar { margin: 8px 0 0; font-size: 11px; color: var(--texto3); }
+.hist-cuerpo .panel-acciones { margin-bottom: 0; }

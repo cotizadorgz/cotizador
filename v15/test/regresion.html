@@ -1,0 +1,32 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Regresión — Cotizador GZ v15</title>
+<style>
+ body{font:13px ui-monospace,Menlo,monospace;background:#0d1117;color:#c9d1d9;padding:20px;max-width:900px;margin:auto}
+ h1{font-size:16px;color:#58a6ff} .g{margin:14px 0;border-left:3px solid #30363d;padding-left:10px}
+ .g.bad{border-color:#f85149} .g.good{border-color:#3fb950}
+ .gh{font-weight:700;color:#e6edf3} .f{color:#f85149} .o{color:#3fb950}
+ table{border-collapse:collapse;width:100%;margin-top:4px} td{padding:1px 8px 1px 0;vertical-align:top}
+ #sum{font-size:15px;padding:10px;background:#161b22;border-radius:6px}
+</style>
+<h1>Regresión — Cotizador GZ v15</h1>
+<div id="sum">corriendo…</div>
+<div id="out"></div>
+<script type="module">
+import { correr } from "./regresion.js";
+const r = correr();
+document.getElementById("sum").innerHTML =
+  `<b class="${r.fail ? "f" : "o"}">${r.ok} pasan · ${r.fail} fallan</b> de ${r.ok + r.fail} casos`;
+const out = document.getElementById("out");
+for (const [g, s] of Object.entries(r.grupos)) {
+  const d = document.createElement("div");
+  d.className = "g " + (s.fail ? "bad" : "good");
+  const fallos = r.casos.filter(c => c.grupo === g && !c.pasa);
+  d.innerHTML = `<div class="gh">${g} — <span class="${s.fail ? "f" : "o"}">${s.ok}/${s.ok + s.fail}</span></div>` +
+    (fallos.length ? "<table>" + fallos.map(c =>
+      `<tr><td>${c.etiqueta}</td><td class="f">esperado ${c.esperado} · dio ${c.obtenido}</td><td>${c.extra || ""}</td></tr>`).join("") + "</table>" : "");
+  out.appendChild(d);
+}
+console.log(`RESUMEN ${r.ok} ok / ${r.fail} fail`);
+for (const c of r.casos.filter(c => !c.pasa)) console.log(`FALLA [${c.grupo}] ${c.etiqueta}: esperado ${c.esperado}, dio ${c.obtenido} ${c.extra}`);
+</script>
