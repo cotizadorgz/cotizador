@@ -130,6 +130,13 @@ main { max-width: 780px; margin: 0 auto; padding: 14px; display: grid; gap: 14px
   background: var(--royal); border-color: var(--royal); color: #fff; font-weight: 600;
 }
 
+/* ── Referencia de HP ── */
+.ref-hp {
+  margin-bottom: 10px; padding: 8px 12px; border-radius: 9px;
+  background: color-mix(in srgb, var(--royal) 10%, transparent);
+  color: var(--texto2); font-size: 12px; font-weight: 600;
+}
+
 /* ── Campos ── */
 .campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
 .campos label, .vents label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--texto2); }

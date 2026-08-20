@@ -15,9 +15,9 @@ const medidaSec = e => `${e.secciones} sec x ${fmtM(e.ancho)}m`;
 const medidaDobles = e => `${e.secDobles} sec x ${fmtM(e.ancho)}m`;
 
 // Campos de entrada de cada producto, como datos. La pantalla los dibuja sola.
-const N = (id, label, step = 0.01, si) => ({ id, label, tipo: "num", step, si });
+const N = (id, label, step = 0.01, ej, si) => ({ id, label, tipo: "num", step, ej, si });
 const S = (id, label, opciones, si) => ({ id, label, tipo: "select", opciones, si });
-const A = () => ({ id: "ancho", label: "Ancho de batería", tipo: "num", step: 0.01, unidad: "m" });
+const A = ej => ({ id: "ancho", label: "Ancho de batería", tipo: "num", step: 0.01, unidad: "m", ej });
 const HP = lista => S("hp", "HP", lista.map(h => [h, fmtHP(h)]));
 const BANDEJA = () => S("bandeja", "Bandeja plástica", [[800, "800 mm"], [1000, "1000 mm"]], e => e.enchapado);
 const sinVent = () => ({ ...VENT_CERO });
@@ -36,7 +36,7 @@ export const PERFILES = {
   ev: {
     id: "ev", nombre: "Evaporador estático 5/8\"", familia: "estatico",
     medida: medidaSec,
-    campos: [N("secciones","Secciones",1), A()],
+    campos: [N("secciones","Secciones",1,"ej. 6"), A("ej. 0.50")],
     ventDefault: sinVent,
     bateria: (e, P) => ({ concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m`, importe: e.secciones * e.ancho * P.tarifas.seccionSimple58 }),
     adicionales: (e, P) => [
@@ -48,8 +48,9 @@ export const PERFILES = {
 
   oli: {
     id: "oli", nombre: "Evaporador estático compacto 3/8\"", familia: "estatico",
+    ref: "Ref: 8 sec = 1/3HP · 12 sec = 1/2HP · 16 sec = 3/4HP · 20 sec = 1HP",
     medida: medidaSec,
-    campos: [N("secciones","Secciones",1), A()],
+    campos: [N("secciones","Secciones",1,"ej. 9"), A("ej. 0.50")],
     ventDefault: sinVent,
     bateria: (e, P) => ({ concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m`, importe: e.secciones * e.ancho * P.tarifas.compacto38 }),
     adicionales: (e, P) => [
@@ -61,7 +62,7 @@ export const PERFILES = {
   resp: {
     id: "resp", nombre: "Respaldar estático 5/8\"", familia: "estatico",
     medida: medidaSec,
-    campos: [N("secciones","Secciones",1), A()],
+    campos: [N("secciones","Secciones",1,"ej. 4"), A("ej. 0.60")],
     ventDefault: sinVent,
     bateria: (e, P) => ({
       concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m (× ${P.tarifas.respaldarFactor})`,
@@ -72,7 +73,7 @@ export const PERFILES = {
   fd: {
     id: "fd", nombre: "Forzador lateral doble 5/8\"", familia: "lateral",
     medida: medidaSec,
-    campos: [N("secciones","Secciones dobles",1), A()],
+    campos: [N("secciones","Secciones dobles",1,"ej. 4"), A("ej. 0.50")],
     chapa: true,
     textoSinChapa: "sin enchapar y sin ventilador",
     ventTarifa: "fija",
@@ -89,7 +90,7 @@ export const PERFILES = {
   fs: {
     id: "fs", nombre: "Forzador lateral simple 5/8\"", familia: "lateral",
     medida: medidaSec,
-    campos: [N("secciones","Secciones",1), A()],
+    campos: [N("secciones","Secciones",1,"ej. 4"), A("ej. 0.50")],
     chapa: true,
     textoSinChapa: "sin enchapar y sin ventilador",
     ventTarifa: "fija",
@@ -102,8 +103,9 @@ export const PERFILES = {
 
   fc: {
     id: "fc", nombre: "Forzador lateral compacto 3/8\"", familia: "lateral",
+    ref: "Ref: 8 sec = 1/3HP · 12 sec = 1/2HP · 16 sec = 3/4HP · 20 sec = 1HP",
     medida: medidaSec,
-    campos: [N("secciones","Secciones",1), A()],
+    campos: [N("secciones","Secciones",1,"ej. 12"), A("ej. 0.36")],
     chapa: true,
     textoSinChapa: "sin enchapar y sin ventilador",
     ventTarifa: "fija",
@@ -121,7 +123,7 @@ export const PERFILES = {
   col: {
     id: "col", nombre: "Columna para batea 5/8\"", familia: "columna",
     medida: medidaDobles,
-    campos: [N("secDobles","Secciones dobles",1), A(), N("uniones","Uniones",1)],
+    campos: [N("secDobles","Secciones dobles",1,"ej. 4"), A("ej. 2.30"), N("uniones","Uniones",1,"0")],
     defaults: { uniones: 0 },
     ventDefault: sinVent,
     bateria: (e, P) => ({ concepto: `Batería ${e.secDobles} sec dobles × ${num(e.ancho)}m`, importe: e.secDobles * e.ancho * P.tarifas.seccionDoble }),
@@ -132,7 +134,7 @@ export const PERFILES = {
     id: "cub", nombre: "Forzador cúbico de cámara", familia: "camara",
     campos: [HP([0.75,1,1.5,2,2.5,3,4,5,6]),
       S("bateria","Batería", ["3F4C","4F4C","4F6C","5F6C","6F6C"].map(k => [k, k]), e => e.enchapado),
-      N("secDobles","Secciones dobles",1, e => !e.enchapado), A()],
+      N("secDobles","Secciones dobles",1,"ej. 15", e => !e.enchapado), A("ej. 1.00")],
     chapa: true, bajaTemp: true, reforzable: true,
     ventTipos: ["v250", "v300", "v300r"],
     textoSinChapa: "sin enchapar y sin ventilador",
@@ -157,7 +159,7 @@ export const PERFILES = {
 
   rcam: {
     id: "rcam", nombre: "Forzador respaldo de cámara", familia: "camara",
-    campos: [HP([0.5,0.75,1,1.5,2,3]), N("secDobles","Secciones dobles",1), A()],
+    campos: [HP([0.5, 0.75, 1, 1.5, 2, 3]), N("secDobles","Secciones dobles",1,"ej. 10"), A("ej. 1.00")],
     chapa: true, bajaTemp: true, reforzable: true,
     ventTipos: ["v250", "v300", "v300r"],
     textoSinChapa: "sin enchapar y sin ventilador",
@@ -178,7 +180,7 @@ export const PERFILES = {
 
   t58: {
     id: "t58", nombre: "Forzador de techo 5/8\"", familia: "techo",
-    campos: [N("secciones","Secciones",1), A(), BANDEJA()],
+    campos: [N("secciones","Secciones",1,"ej. 8"), A("ej. 0.35"), BANDEJA()],
     chapa: true,
     textoSinChapa: "sin bandeja plástica y sin ventilador",
     defaults: { bandeja: 800 },
@@ -194,7 +196,7 @@ export const PERFILES = {
 
   t38: {
     id: "t38", nombre: "Forzador de techo 3/8\"", familia: "techo",
-    campos: [N("secciones","Secciones",1), A(), BANDEJA()],
+    campos: [N("secciones","Secciones",1,"ej. 24"), A("ej. 0.33"), BANDEJA()],
     chapa: true,
     textoSinChapa: "sin bandeja plástica y sin ventilador",
     defaults: { bandeja: 800 },
@@ -211,7 +213,7 @@ export const PERFILES = {
 
   car: {
     id: "car", nombre: "Respaldo para carniceras", familia: "carniceras",
-    campos: [S("dobles","Batería", [[false,"3 secciones simples"],[true,"4 secciones dobles"]]), A()],
+    campos: [S("dobles","Batería", [[false,"3 secciones simples"],[true,"4 secciones dobles"]]), A("ej. 1.40")],
     defaults: { dobles: false },
     ventTarifa: "fija",
     ventDefault: e => v("v250", e.cantVent ?? 2),
@@ -224,7 +226,7 @@ export const PERFILES = {
   da: {
     id: "da", nombre: "Forzador doble ataque", familia: "lateral",
     medida: medidaSec,
-    campos: [S("secciones","Secciones dobles", [[5,"5"],[6,"6"],[7,"7"]]), A()],
+    campos: [S("secciones","Secciones dobles", [[5,"5"],[6,"6"],[7,"7"]]), A("ej. 0.60")],
     ventTarifa: "fija",
     ventDefault: () => v("v200", 2),
     bateria: (e, P, av) => ({
@@ -264,7 +266,7 @@ export const PERFILES = {
   pt: {
     id: "pt", nombre: "Forzador de piso para torteras", familia: "piso",
     medida: medidaSec,
-    campos: [S("secciones","Secciones", [[3,"3"],[4,"4"]]), A()],
+    campos: [S("secciones","Secciones", [[3,"3"],[4,"4"]]), A("ej. 1.25")],
     chapa: true,
     textoSinChapa: "sin enchapar y sin ventilador",
     ventTarifa: "fija",

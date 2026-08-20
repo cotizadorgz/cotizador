@@ -5,6 +5,10 @@ import { cotizar, preciosVenta, preciosPresupuesto, textoCliente, textoPresupues
 import { aplicarCambios, dibujarPanel } from "./panel.js";
 import * as H from "./historial.js";
 
+// Se sube a mano en cada publicación. Sirve para confirmar de un vistazo que el
+// navegador cargó la versión nueva y no una copia guardada.
+export const VERSION = "15.3";
+
 const $ = id => document.getElementById(id);
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 
@@ -151,6 +155,11 @@ function dibujarCatalogo() {
 }
 
 function dibujarCampos() {
+  // Referencia de secciones a HP: sólo la traen los dos compactos de 3/8".
+  const ref = perfilActual().ref;
+  $("refHP").hidden = !ref;
+  if (ref) $("refHP").textContent = ref;
+
   const cont = $("campos"); cont.innerHTML = "";
   // En modo catálogo las medidas las fija el modelo: se muestran, no se editan.
   const soloLectura = tieneCatalogo(estado.pid) && estado.modo === "modelo";
@@ -173,6 +182,7 @@ function dibujarCampos() {
       };
     } else {
       campo = el("input"); campo.type = "number"; campo.step = c.step; campo.inputMode = "decimal";
+      if (c.ej) campo.placeholder = c.ej;
       campo.value = estado.entrada[c.id] ?? "";
       campo.oninput = () => { estado.entrada[c.id] = campo.value === "" ? "" : +campo.value; estado.vents = null; invalidar(); };
     }
@@ -550,7 +560,7 @@ $("btnPanel").onclick = () => {
 };
 
 // ── Arranque ─────────────────────────────────────────────────────────────────
-$("versionPrecios").textContent = `Lista ${PRECIOS.version}`;
+$("versionPrecios").textContent = `Lista ${PRECIOS.version} · app ${VERSION}`;
 if (PRECIOS.venta.dolarOficial) {
   $("dolarOficial").value = Math.round(PRECIOS.venta.dolarOficial);
   $("dolarOficialEstado").textContent = guardado.oficialFecha ? `guardado el ${fechaCorta(guardado.oficialFecha)}` : "guardado";

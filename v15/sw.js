@@ -4,7 +4,7 @@
 // Estrategia: RED PRIMERO, cache como respaldo. Es una app de precios: vale más
 // esperar medio segundo y cotizar con la lista de hoy que responder al instante
 // con una copia vieja. Sin señal, el cache contesta y la app abre igual.
-const CACHE = "gz-v15-8";
+const CACHE = "gz-v15-10";
 const ARCHIVOS = [
   "./", "./index.html", "./manifest.json", "./logo.jpg",
   "./icono-180.png", "./icono-192.png", "./icono-512.png",
@@ -29,8 +29,12 @@ self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return;   // la API del dólar nunca se cachea
+  // GitHub Pages manda cache-control: max-age=600, y cada archivo tiene su propio
+  // reloj. Sin esto podés quedarte con el index.html nuevo y el app.js viejo durante
+  // diez minutos — media app actualizada y media no. Pedimos siempre a la red.
+  const pedido = e.request.mode === "navigate" ? e.request : new Request(e.request, { cache: "reload" });
   e.respondWith(
-    fetch(e.request)
+    fetch(pedido)
       .then(r => {
         if (r.ok) { const copia = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copia)); }
         return r;
