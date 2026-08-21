@@ -266,7 +266,7 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
     cond: { hp: 0.25 }
   };
   const esperados = {
-    ev: 97.50, oli: 100.25, resp: 74.88, fd: 115.50, fs: 133.50, fc: 144.18,
+    ev: 97.50, oli: 100.25, resp: 77.00, fd: 115.50, fs: 133.50, fc: 144.18,
     col: 220.80, cub: 263.70, rcam: 231, t58: 147.40, t38: 232.60,
     car: 241.80, da: 195.80, pt: 152.60, cond: 64.80
   };
@@ -360,6 +360,25 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
   const cub = cotizar(PERFILES.cub, { enchapado: true, hp: 3, bateria: "5F6C", ancho: 1.4 });
   chkOk("Explicaciones", "El col/dist explica que arranca en 2HP",
         cub.desglose.find(d => /Columnas/.test(d.concepto)).nota.includes("Arranca en 2HP"));
+}
+
+// ── Respaldar con la fórmula del estático ────────────────────────────────────
+// Cambio del 21/08/2026: antes era sec × 30 × ancho × 1,04, sin curvas ni markup.
+{
+  const casos = [[2, 0.40, 28.50], [4, 0.60, 77.00], [6, 0.50, 97.50], [8, 1.00, 248.00]];
+  for (const [sec, ancho, esperado] of casos) {
+    chk("Respaldar", `${sec} sec × ${ancho}m`, esperado, cotizar(PERFILES.resp, { secciones: sec, ancho }).base);
+  }
+  chkOk("Respaldar", "Ya no lleva el factor 1,04", !("respaldarFactor" in PRECIOS.tarifas));
+  // Con la misma medida tiene que dar lo mismo que el evaporador estático.
+  for (const [sec, ancho] of [[4, 0.6], [6, 0.5], [9, 0.6]]) {
+    const ev = cotizar(PERFILES.ev, { secciones: sec, ancho }).base;
+    const re = cotizar(PERFILES.resp, { secciones: sec, ancho }).base;
+    chk("Respaldar", `${sec}×${ancho} da igual que el estático`, ev, re);
+  }
+  const d = cotizar(PERFILES.resp, { secciones: 4, ancho: 0.6 }).desglose;
+  chkOk("Respaldar", "Ahora lleva curvas y markup",
+        d.some(x => x.concepto === "Curvas") && d.some(x => x.concepto === "Markup por tamaño"));
 }
 
 // ── Coma o punto ─────────────────────────────────────────────────────────────

@@ -28,7 +28,6 @@ export const PRECIOS = {
     seccionDoble: 24,         // cúbico, respaldo cámara, columna batea, lateral doble s/ench., techo 5/8"
     compacto38: 20,           // compactos y laterales compactos s/ench., techo 3/8"
     lateralCompactoEnch: 24,  // lateral compacto 3/8" enchapado
-    respaldarFactor: 1.04,
     pisoTorteras: { ench3: 97, ench4: 129.33, sc3: 72, sc4: 96 }
   },
 

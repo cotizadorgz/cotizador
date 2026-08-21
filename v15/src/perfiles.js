@@ -17,6 +17,9 @@ const listaTabla = (obj, pre = "", pos = "") =>
   Object.entries(obj).map(([k, v]) => `${pre}${k}${pos} = $${v}`).join(" · ");
 const usd = n => `$${String(n).replace(".", ",")}`;
 
+// Markup por tamaño, compartido por el evaporador estático y el respaldar.
+const MARKUP_ESTATICO = [[5, 4], [8, 6], [12, 8], [14, 10], [16, 12]];
+
 const medidaSec = e => `${e.secciones} sec x ${fmtM(e.ancho)}m`;
 const medidaDobles = e => `${e.secDobles} sec x ${fmtM(e.ancho)}m`;
 
@@ -48,7 +51,7 @@ export const PERFILES = {
       nota: `${usd(P.tarifas.seccionSimple58)} por sección por metro de ancho` }),
     adicionales: (e, P) => [
       { concepto: "Curvas", importe: e.secciones * P.adicionales.curvasPorSeccion, nota: `${usd(P.adicionales.curvasPorSeccion)} por sección · acá ${e.secciones}` },
-      { concepto: "Markup por tamaño", importe: tramo([[5, 4], [8, 6], [12, 8], [14, 10], [16, 12]], e.secciones),
+      { concepto: "Markup por tamaño", importe: tramo(MARKUP_ESTATICO, e.secciones),
         nota: "3 a 5 sec = $4 · 6 a 8 = $6 · 9 a 12 = $8 · 13 a 14 = $10 · 15 a 16 = $12" }
     ],
     ajustePost: base => redondeo075(base)
@@ -72,10 +75,15 @@ export const PERFILES = {
     medida: medidaSec,
     campos: [N("secciones","Secciones",1,"ej. 4"), A("ej. 0.60")],
     ventDefault: sinVent,
-    bateria: (e, P) => ({
-      concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m (× ${P.tarifas.respaldarFactor})`,
-      importe: e.secciones * P.tarifas.seccionSimple58 * e.ancho * P.tarifas.respaldarFactor
-    })
+    // Misma fórmula que el evaporador estático (21/08/2026). Antes era
+    // sec × 30 × ancho × 1,04, sin curvas ni markup.
+    bateria: (e, P) => ({ concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m`, importe: e.secciones * e.ancho * P.tarifas.seccionSimple58,
+      nota: `${usd(P.tarifas.seccionSimple58)} por sección por metro de ancho` }),
+    adicionales: (e, P) => [
+      { concepto: "Curvas", importe: e.secciones * P.adicionales.curvasPorSeccion, nota: `${usd(P.adicionales.curvasPorSeccion)} por sección · acá ${e.secciones}` },
+      { concepto: "Markup por tamaño", importe: tramo(MARKUP_ESTATICO, e.secciones),
+        nota: "3 a 5 sec = $4 · 6 a 8 = $6 · 9 a 12 = $8 · 13 a 14 = $10 · 15 a 16 = $12" }
+    ]
   },
 
   fd: {
