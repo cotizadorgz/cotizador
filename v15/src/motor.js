@@ -180,6 +180,16 @@ export function encabezado({ cliente, fecha = new Date() } = {}) {
 const HP_TEXTO = { 0.25: "1/4", 0.33: "1/3", 0.5: "1/2", 0.75: "3/4" };
 export const fmtHP = hp => (HP_TEXTO[hp] || String(hp).replace(".", ","));
 export const fmtARS = n => "$ " + Math.round(n).toLocaleString("es-AR");
+// El teclado del iPhone en español escribe coma, y un input type=number sólo acepta
+// punto: lo tipeado se perdía en silencio. Acá vale cualquiera de los dos.
+export const leerNumero = v => {
+  if (v == null) return null;
+  const t = String(v).trim().replace(",", ".");
+  if (t === "") return null;
+  const n = parseFloat(t);
+  return isNaN(n) ? null : n;
+};
+
 export const fmtM = n => Number(n).toFixed(2).replace(".", ",");
 export const fmtUSD = n => "USD " + n.toFixed(2).replace(".", ",");
 

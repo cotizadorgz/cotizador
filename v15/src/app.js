@@ -1,13 +1,13 @@
 import { PRECIOS } from "./precios.js";
 import { PERFILES, ORDEN } from "./perfiles.js";
 import { MODELOS } from "./modelos.js";
-import { cotizar, preciosVenta, preciosPresupuesto, textoCliente, textoPresupuesto, etiquetaCliente, fmtARS, fmtUSD, r2 } from "./motor.js";
+import { cotizar, preciosVenta, preciosPresupuesto, textoCliente, textoPresupuesto, etiquetaCliente, fmtARS, fmtUSD, r2, leerNumero } from "./motor.js";
 import { aplicarCambios, dibujarPanel } from "./panel.js";
 import * as H from "./historial.js";
 
 // Se sube a mano en cada publicación. Sirve para confirmar de un vistazo que el
 // navegador cargó la versión nueva y no una copia guardada.
-export const VERSION = "15.4";
+export const VERSION = "15.6";
 
 const $ = id => document.getElementById(id);
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
@@ -55,10 +55,23 @@ async function traerDolarOficial() {
 const LLAVE_PED = "gz15.presupuesto";
 const pedidoGuardado = JSON.parse(localStorage.getItem(LLAVE_PED) || '{"lineas":[],"embalaje":0}');
 
+// ── Orden de la grilla ───────────────────────────────────────────────────────
+// Se guarda por dispositivo. Si más adelante aparece un producto nuevo, se agrega
+// al final en vez de perderse.
+const LLAVE_ORDEN = "gz15.orden";
+
+function ordenGuardado() {
+  let guardado = [];
+  try { guardado = JSON.parse(localStorage.getItem(LLAVE_ORDEN) || "[]"); } catch { /* nada */ }
+  const validos = guardado.filter(id => ORDEN.includes(id));
+  return [...validos, ...ORDEN.filter(id => !validos.includes(id))];
+}
+
 // ── Estado de la pantalla ────────────────────────────────────────────────────
 const estado = {
   pid: null, modo: "modelo", modelo: 0, entrada: {}, vents: null,
   filas: new Set(), eligiendo: false, calculado: false, excluidos: [],
+  orden: [], customizando: false,
   lineas: pedidoGuardado.lineas || [],
   // El embalaje arranca en 0 salvo que hayas dejado un pedido a medio armar:
   // ahí se restaura junto con los ítems.
@@ -103,17 +116,56 @@ function elegirProducto(pid) {
 // La grilla de 15 productos ocupa media pantalla de celular. Una vez elegido el
 // producto se pliega a un renglón; "Cambiar" la vuelve a abrir.
 function dibujarProductos() {
-  const abierta = !estado.pid || estado.eligiendo;
+  const abierta = !estado.pid || estado.eligiendo || estado.customizando;
   $("productos").hidden = !abierta;
   $("elegido").hidden = abierta;
+  $("btnCustomizar").hidden = !abierta;
+  $("btnCustomizar").textContent = estado.customizando ? "Listo" : "Customizar grilla";
+  $("btnCustomizar").classList.toggle("activo", estado.customizando);
   if (!abierta) { $("nombreElegido").textContent = perfilActual().nombre; return; }
 
-  const cont = $("productos"); cont.innerHTML = "";
-  for (const pid of ORDEN) {
-    const b = el("button", null, PERFILES[pid].nombre);
-    b.setAttribute("aria-pressed", String(estado.pid === pid));
-    b.onclick = () => elegirProducto(pid);
-    cont.appendChild(b);
+  const cont = $("productos");
+  cont.innerHTML = "";
+  cont.classList.toggle("ordenando", estado.customizando);
+
+  estado.orden.forEach((pid, i) => {
+    if (!estado.customizando) {
+      const b = el("button", null, PERFILES[pid].nombre);
+      b.setAttribute("aria-pressed", String(estado.pid === pid));
+      b.onclick = () => elegirProducto(pid);
+      cont.appendChild(b);
+      return;
+    }
+    // En modo customizar cada producto es un renglón con flechas.
+    const fila = el("div", "fila-orden");
+    fila.appendChild(el("span", "orden-nombre", PERFILES[pid].nombre));
+    const mover = paso => {
+      const j = i + paso;
+      if (j < 0 || j >= estado.orden.length) return;
+      const copia = [...estado.orden];
+      [copia[i], copia[j]] = [copia[j], copia[i]];
+      estado.orden = copia;
+      localStorage.setItem(LLAVE_ORDEN, JSON.stringify(copia));
+      dibujarProductos();
+    };
+    const arriba = el("button", "orden-flecha", "↑"); arriba.title = "Subir";
+    const abajo = el("button", "orden-flecha", "↓"); abajo.title = "Bajar";
+    arriba.disabled = i === 0;
+    abajo.disabled = i === estado.orden.length - 1;
+    arriba.onclick = () => mover(-1);
+    abajo.onclick = () => mover(1);
+    fila.append(arriba, abajo);
+    cont.appendChild(fila);
+  });
+
+  if (estado.customizando) {
+    const reset = el("button", "orden-reset", "Volver al orden original");
+    reset.onclick = () => {
+      localStorage.removeItem(LLAVE_ORDEN);
+      estado.orden = [...ORDEN];
+      dibujarProductos();
+    };
+    cont.appendChild(reset);
   }
 }
 
@@ -181,10 +233,18 @@ function dibujarCampos() {
         estado.vents = null; invalidar(); render();
       };
     } else {
-      campo = el("input"); campo.type = "number"; campo.step = c.step; campo.inputMode = "decimal";
+      const entero = c.step === 1;
+      campo = el("input");
+      campo.type = entero ? "number" : "text";
+      campo.inputMode = entero ? "numeric" : "decimal";
+      if (entero) campo.step = 1;
       if (c.ej) campo.placeholder = c.ej;
       campo.value = estado.entrada[c.id] ?? "";
-      campo.oninput = () => { estado.entrada[c.id] = campo.value === "" ? "" : +campo.value; estado.vents = null; invalidar(); };
+      campo.oninput = () => {
+        const n = leerNumero(campo.value);
+        estado.entrada[c.id] = campo.value.trim() === "" ? "" : (n ?? "");
+        estado.vents = null; invalidar();
+      };
     }
     campo.disabled = soloLectura;
     lab.appendChild(campo);
@@ -351,6 +411,9 @@ function dibujarHistorial() {
   secc.hidden = dias.length === 0;
   if (secc.hidden) return;
 
+  const total = dias.reduce((n, [, e]) => n + e.length, 0);
+  $("resumenHist").textContent = `${total} cotización${total === 1 ? "" : "es"}`;
+
   const cont = $("historialCuerpo"); cont.innerHTML = "";
   for (const [, entradas] of dias) {
     cont.appendChild(el("h3", "hist-dia", H.fechaLarga(entradas[0].fecha)));
@@ -362,6 +425,18 @@ function dibujarHistorial() {
         (e.cliente ? e.cliente + " — " : "") +
         (e.lineas.length === 1 ? e.lineas[0].etiqueta : `Presupuesto de ${e.lineas.length} ítems`)));
       res.appendChild(el("span", "hist-monto", fmtUSD(e.usd)));
+      // Copiar sin desplegar: el clic no tiene que abrir ni cerrar la entrada.
+      const copiar = el("button", "hist-copiar", "Copiar");
+      copiar.title = "Copiar esta cotización tal cual se envió";
+      copiar.onclick = async ev => {
+        ev.preventDefault(); ev.stopPropagation();
+        try { await navigator.clipboard.writeText(e.texto); }
+        catch { prompt("Copiá este texto:", e.texto); return; }
+        const antes = copiar.textContent;
+        copiar.textContent = "✓";
+        setTimeout(() => { copiar.textContent = antes; }, 1500);
+      };
+      res.appendChild(copiar);
       caja.appendChild(res);
 
       const cuerpo = el("div", "hist-cuerpo");
@@ -485,7 +560,7 @@ function recalcular() {
   // El embalaje no es de este ítem sino del pedido: se suma una sola vez abajo.
   const entrada = {
     ...estado.entrada,
-    cantidad: Math.max(1, +$("cantidad").value || 1),
+    cantidad: Math.max(1, leerNumero($("cantidad").value) || 1),
     embalaje: 0
   };
   if (estado.vents) entrada.vents = estado.vents;
@@ -526,7 +601,7 @@ $("btnCopiar").onclick = async () => {
 
 $("cantidad").oninput = invalidar;
 $("embalaje").oninput = () => {
-  estado.embalaje = +$("embalaje").value || 0;
+  estado.embalaje = leerNumero($("embalaje").value) || 0;
   guardarPedido(); recalcular(); dibujarPresupuesto();
 };
 
@@ -539,6 +614,12 @@ $("btnCalcular").onclick = () => {
 };
 
 $("btnCambiar").onclick = () => { estado.eligiendo = true; render(); };
+
+$("btnCustomizar").onclick = () => {
+  estado.customizando = !estado.customizando;
+  if (!estado.customizando && estado.pid) estado.eligiendo = false;
+  render();
+};
 
 $("btnAgregar").onclick = agregarAlPresupuesto;
 
@@ -560,13 +641,13 @@ $("btnVaciar").onclick = () => {
 };
 
 $("dolarOficial").oninput = e => {
-  PRECIOS.venta.dolarOficial = parseFloat(e.target.value) || null;
+  PRECIOS.venta.dolarOficial = leerNumero(e.target.value) || null;
   guardarDolares({ oficial: PRECIOS.venta.dolarOficial, oficialFecha: new Date().toISOString() });
   $("dolarOficialEstado").className = ""; $("dolarOficialEstado").textContent = "cargado a mano";
   recalcular();
 };
 $("dolarML").oninput = e => {
-  PRECIOS.venta.dolarML = parseFloat(e.target.value) || null;
+  PRECIOS.venta.dolarML = leerNumero(e.target.value) || null;
   guardarDolares({ ml: PRECIOS.venta.dolarML, mlFecha: new Date().toISOString() });
   $("dolarMLEstado").textContent = "editado hoy";
   recalcular();
@@ -583,6 +664,7 @@ $("btnPanel").onclick = () => {
 };
 
 // ── Arranque ─────────────────────────────────────────────────────────────────
+estado.orden = ordenGuardado();
 $("versionPrecios").textContent = `Lista ${PRECIOS.version} · app ${VERSION}`;
 if (PRECIOS.venta.dolarOficial) {
   $("dolarOficial").value = Math.round(PRECIOS.venta.dolarOficial);

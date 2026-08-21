@@ -24,12 +24,12 @@
   <div class="dolares">
     <label class="dol">
       <span>Dólar oficial</span>
-      <input type="number" id="dolarOficial" inputmode="decimal" step="1">
+      <input type="text" id="dolarOficial" inputmode="decimal">
       <em id="dolarOficialEstado">—</em>
     </label>
     <label class="dol">
       <span>Dólar ML</span>
-      <input type="number" id="dolarML" inputmode="decimal" step="1">
+      <input type="text" id="dolarML" inputmode="decimal">
       <em id="dolarMLEstado">—</em>
     </label>
   </div>
@@ -38,6 +38,7 @@
 <main>
   <section class="tarjeta">
     <h2>Producto</h2>
+    <button type="button" id="btnCustomizar" class="btn-customizar">Customizar grilla</button>
     <div id="elegido" class="elegido" hidden>
       <span id="nombreElegido"></span>
       <button type="button" id="btnCambiar">Cambiar</button>
@@ -62,7 +63,7 @@
     <div id="ventiladores" class="vents"></div>
     <div class="campos">
       <label><span>Cantidad</span><input type="number" id="cantidad" value="1" min="1" step="1" inputmode="numeric"></label>
-      <label><span>Embalaje <em>(uno por pedido)</em></span><input type="number" id="embalaje" value="0" min="0" step="0.01" inputmode="decimal"></label>
+      <label><span>Embalaje <em>(uno por pedido)</em></span><input type="text" id="embalaje" value="0" inputmode="decimal"></label>
       <label><span>Cliente <em>(opcional)</em></span><input type="text" id="cliente" placeholder="Nombre" autocomplete="off"></label>
     </div>
     <button class="copiar" id="btnCalcular">Calcular</button>
@@ -93,10 +94,14 @@
   </section>
 
   <section class="tarjeta" id="historial" hidden>
-    <h2>Historial</h2>
-    <p class="pista pista-izq">Se guarda solo cada vez que copiás algo para un cliente,
-      con el dólar de ese día.</p>
-    <div id="historialCuerpo"></div>
+    <details class="caja-desglose" id="cajaHistorial">
+      <summary><span>Historial en este dispositivo</span><span id="resumenHist"></span></summary>
+      <div class="hist-adentro">
+        <p class="pista pista-izq">Se guarda solo cada vez que copiás algo para un cliente,
+          con el dólar de ese día.</p>
+        <div id="historialCuerpo"></div>
+      </div>
+    </details>
   </section>
 </main>
 

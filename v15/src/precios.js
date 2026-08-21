@@ -78,7 +78,7 @@ export const PRECIOS = {
   // Condensadores. Precio fijo por modelo, sin fórmula ni medida.
   // El ventilador y la base son opcionales y dependen del modelo.
   condensadores: {
-    precio:     { 0.25: 64.80, 0.33: 92.30, 0.5: 119.60, 0.75: 204.50, 1: 266 },
+    precio:     { 0.25: 64.80, 0.33: 92.20, 0.5: 119.60, 0.75: 204.50, 1: 266 },
     base:       { 0.25: 15,    0.33: 15,    0.5: 15,     0.75: 20,     1: 20 },
     ventilador: { 0.25: "v200", 0.33: "v200", 0.5: "v200", 0.75: "v300", 1: "v300" }
   },

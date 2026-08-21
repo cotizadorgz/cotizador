@@ -4,6 +4,7 @@ import { PRECIOS } from "../src/precios.js";
 import * as L from "../src/lista-publicada.js";
 import { MODELOS } from "../src/modelos.js";
 import * as H from "../src/historial.js";
+import { leerNumero } from "../src/motor.js";
 
 const res = { ok: 0, fail: 0, casos: [], grupos: {} };
 
@@ -244,6 +245,19 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
   PRECIOS.venta.dolarOficial = null;
 }
 
+// ── Coma o punto ─────────────────────────────────────────────────────────────
+// El teclado del iPhone en español escribe coma; hay que aceptar las dos.
+{
+  const casos = [["0,50", 0.5], ["0.50", 0.5], ["3,70", 3.7], ["12", 12], [" 1,25 ", 1.25],
+                 ["", null], ["abc", null], [null, null], ["0", 0]];
+  for (const [entrada, esperado] of casos) {
+    chkOk("Coma o punto", `"${entrada}" → ${esperado}`, leerNumero(entrada) === esperado, String(leerNumero(entrada)));
+  }
+  const conComa = cotizar(PERFILES.ev, { secciones: 6, ancho: leerNumero("0,50") });
+  const conPunto = cotizar(PERFILES.ev, { secciones: 6, ancho: leerNumero("0.50") });
+  chk("Coma o punto", "Cotizar con coma da lo mismo que con punto", conPunto.base, conComa.base);
+}
+
 // ── Historial ────────────────────────────────────────────────────────────────
 // Con una llave aparte, para no tocar el historial real de quien esté probando.
 {
@@ -318,7 +332,7 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
 
 // ── Condensadores ────────────────────────────────────────────────────────────
 {
-  const fijos = { 0.25: 64.80, 0.33: 92.30, 0.5: 119.60, 0.75: 204.50, 1: 266 };
+  const fijos = { 0.25: 64.80, 0.33: 92.20, 0.5: 119.60, 0.75: 204.50, 1: 266 };
   const etiq  = { 0.25: "1/4", 0.33: "1/3", 0.5: "1/2", 0.75: "3/4", 1: "1" };
   const vent  = { 0.25: 37.50, 0.33: 37.50, 0.5: 37.50, 0.75: 66, 1: 66 };
   const base  = { 0.25: 15, 0.33: 15, 0.5: 15, 0.75: 20, 1: 20 };

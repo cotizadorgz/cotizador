@@ -119,6 +119,32 @@ main { max-width: 780px; margin: 0 auto; padding: 14px; display: grid; gap: 14px
   background: var(--navy); border-color: var(--navy); color: #fff; font-weight: 600;
 }
 
+.btn-customizar {
+  margin-top: 10px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+  border: 1px dashed var(--borde2); background: none; color: var(--texto3);
+  font: inherit; font-size: 11px;
+}
+.btn-customizar:hover { color: var(--texto2); border-color: var(--royal); }
+.btn-customizar.activo {
+  border-style: solid; background: var(--royal); border-color: var(--royal); color: #fff; font-weight: 600;
+}
+.productos.ordenando { grid-template-columns: 1fr; gap: 6px; }
+.fila-orden {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border: 1px solid var(--borde); border-radius: 10px; background: var(--fondo2);
+}
+.orden-nombre { flex: 1; font-size: 13px; }
+.orden-flecha {
+  width: 34px; height: 34px; border-radius: 8px; cursor: pointer; line-height: 1;
+  border: 1px solid var(--borde2); background: var(--tarjeta); color: var(--texto);
+  font: inherit; font-size: 15px;
+}
+.orden-flecha:disabled { opacity: .3; cursor: default; }
+.orden-reset {
+  margin-top: 6px; padding: 9px; border-radius: 9px; cursor: pointer; width: 100%;
+  border: 1px solid var(--borde2); background: none; color: var(--texto2); font: inherit; font-size: 12px;
+}
+
 /* ── Modos catálogo / a medida ── */
 .modos { display: flex; gap: 6px; margin-bottom: 12px; }
 .modos button {
@@ -280,6 +306,12 @@ footer { padding: 18px; text-align: center; }
 .quitar:hover { border-color: var(--error); color: var(--error); }
 
 /* ── Historial ── */
+.hist-adentro { padding: 12px; }
+.hist-copiar {
+  border: 1px solid var(--borde2); background: var(--fondo2); color: var(--texto2);
+  font: inherit; font-size: 11px; padding: 4px 10px; border-radius: 7px; cursor: pointer;
+}
+.hist-copiar:hover { border-color: var(--royal); color: var(--texto); }
 .hist-dia {
   margin: 14px 0 6px; font-size: 11px; font-weight: 700; letter-spacing: .7px;
   text-transform: uppercase; color: var(--texto3);

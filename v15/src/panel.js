@@ -5,7 +5,7 @@
 import { PRECIOS } from "./precios.js";
 import { PERFILES } from "./perfiles.js";
 import { MODELOS } from "./modelos.js";
-import { cotizar, r2, fmtUSD, fmtHP } from "./motor.js";
+import { cotizar, r2, fmtUSD, fmtHP, leerNumero } from "./motor.js";
 import * as L from "./lista-publicada.js";
 
 const LLAVE = "gz15.precios";
@@ -220,10 +220,10 @@ export function dibujarPanel(cont, alCambiar) {
     if (!campoDeFabrica(ruta)) tit.appendChild(el("em", "tocado", " editado"));
     lab.appendChild(tit);
     const inp = el("input");
-    inp.type = "number"; inp.step = "0.01"; inp.value = valor; inp.inputMode = "decimal";
+    inp.type = "text"; inp.value = valor; inp.inputMode = "decimal";
     inp.onchange = () => {
-      const n = parseFloat(inp.value);
-      if (isNaN(n)) { inp.value = leerEn(PRECIOS, ruta); return; }
+      const n = leerNumero(inp.value);
+      if (n === null) { inp.value = leerEn(PRECIOS, ruta); return; }
       guardarCambio(ruta, n);
       refrescarCuenta();
       tit.querySelector("em") || tit.appendChild(el("em", "tocado", " editado"));
