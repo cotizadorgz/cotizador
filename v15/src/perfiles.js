@@ -11,6 +11,12 @@ const num = n => String(n).replace(".", ",");   // 0.9 → 0,9 en el desglose
 // declaran no la muestran: cúbico, respaldo de cámara, carniceras, condensador y los
 // dos de techo — en el techo el ancho es el de la batería, igual en todos los modelos,
 // así que no le dice nada al cliente.
+// Explicaciones que se ven al tocar un renglón del desglose. Salen del panel de
+// precios, así que si cambiás un valor la explicación lo dice al instante.
+const listaTabla = (obj, pre = "", pos = "") =>
+  Object.entries(obj).map(([k, v]) => `${pre}${k}${pos} = $${v}`).join(" · ");
+const usd = n => `$${String(n).replace(".", ",")}`;
+
 const medidaSec = e => `${e.secciones} sec x ${fmtM(e.ancho)}m`;
 const medidaDobles = e => `${e.secDobles} sec x ${fmtM(e.ancho)}m`;
 
@@ -38,10 +44,12 @@ export const PERFILES = {
     medida: medidaSec,
     campos: [N("secciones","Secciones",1,"ej. 6"), A("ej. 0.50")],
     ventDefault: sinVent,
-    bateria: (e, P) => ({ concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m`, importe: e.secciones * e.ancho * P.tarifas.seccionSimple58 }),
+    bateria: (e, P) => ({ concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m`, importe: e.secciones * e.ancho * P.tarifas.seccionSimple58,
+      nota: `${usd(P.tarifas.seccionSimple58)} por sección por metro de ancho` }),
     adicionales: (e, P) => [
-      { concepto: "Curvas", importe: e.secciones * P.adicionales.curvasPorSeccion },
-      { concepto: "Markup por tamaño", importe: tramo([[5, 4], [8, 6], [12, 8], [14, 10], [16, 12]], e.secciones) }
+      { concepto: "Curvas", importe: e.secciones * P.adicionales.curvasPorSeccion, nota: `${usd(P.adicionales.curvasPorSeccion)} por sección · acá ${e.secciones}` },
+      { concepto: "Markup por tamaño", importe: tramo([[5, 4], [8, 6], [12, 8], [14, 10], [16, 12]], e.secciones),
+        nota: "3 a 5 sec = $4 · 6 a 8 = $6 · 9 a 12 = $8 · 13 a 14 = $10 · 15 a 16 = $12" }
     ],
     ajustePost: base => redondeo075(base)
   },
@@ -55,7 +63,7 @@ export const PERFILES = {
     bateria: (e, P) => ({ concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m`, importe: e.secciones * e.ancho * P.tarifas.compacto38 }),
     adicionales: (e, P) => [
       { concepto: "Curvas", importe: e.secciones * P.adicionales.curvasPorSeccion },
-      { concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.oli }
+      { concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.oli, nota: "Importe fijo, no depende del tamaño" }
     ]
   },
 
@@ -79,11 +87,14 @@ export const PERFILES = {
     ventTarifa: "fija",
     ventDefault: e => (e.enchapado ? v("v200", 1) : sinVent()),
     bateria: (e, P, av) => e.enchapado
-      ? { concepto: `Batería enchapada ${e.secciones} sec × ${num(e.ancho)}m`, importe: deTabla(P.precioMetro.lateralDoble, e.secciones, av, "Lateral doble") * e.ancho }
-      : { concepto: `Batería ${e.secciones} sec dobles × ${num(e.ancho)}m`, importe: e.secciones * P.tarifas.seccionDoble * e.ancho },
+      ? { concepto: `Batería enchapada ${e.secciones} sec × ${num(e.ancho)}m`, importe: deTabla(P.precioMetro.lateralDoble, e.secciones, av, "Lateral doble") * e.ancho,
+          nota: `Precio por metro según secciones: ${listaTabla(P.precioMetro.lateralDoble)}. Los costados ya están adentro.` }
+      : { concepto: `Batería ${e.secciones} sec dobles × ${num(e.ancho)}m`, importe: e.secciones * P.tarifas.seccionDoble * e.ancho,
+          nota: `${usd(P.tarifas.seccionDoble)} por sección doble por metro de ancho` },
     // Los costados ya están dentro del precio/metro enchapado: no se suman.
     adicionales: (e, P) => e.enchapado ? [] : [
-      { concepto: "Costados de aluminio", importe: tramo(P.adicionales.costadosAluminio.fd, e.secciones) }
+      { concepto: "Costados de aluminio", importe: tramo(P.adicionales.costadosAluminio.fd, e.secciones),
+        nota: `${usd(P.adicionales.costadosAluminio.fd[0][1])} de 2 a ${P.adicionales.costadosAluminio.fd[0][0]} secciones · ${usd(P.adicionales.costadosAluminio.fd[1][1])} de ${P.adicionales.costadosAluminio.fd[0][0] + 1} a ${P.adicionales.costadosAluminio.fd[1][0]}` }
     ]
   },
 
@@ -96,9 +107,10 @@ export const PERFILES = {
     ventTarifa: "fija",
     ventDefault: e => (e.enchapado ? v("v200", 1) : sinVent()),
     bateria: (e, P, av) => e.enchapado
-      ? { concepto: `Batería enchapada ${e.secciones} sec × ${num(e.ancho)}m`, importe: deTabla(P.precioMetro.lateralSimple, e.secciones, av, "Lateral simple") * e.ancho }
+      ? { concepto: `Batería enchapada ${e.secciones} sec × ${num(e.ancho)}m`, importe: deTabla(P.precioMetro.lateralSimple, e.secciones, av, "Lateral simple") * e.ancho,
+          nota: `Precio por metro según secciones: ${listaTabla(P.precioMetro.lateralSimple)}. Los costados ya están adentro.` }
       : { concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m`, importe: e.secciones * P.tarifas.seccionSimple58 * e.ancho },
-    adicionales: (e, P) => e.enchapado ? [] : [{ concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.fs }]
+    adicionales: (e, P) => e.enchapado ? [] : [{ concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.fs, nota: "Sólo en la versión sin enchapar: en la enchapada ya van dentro del precio/metro" }]
   },
 
   fc: {
@@ -116,7 +128,7 @@ export const PERFILES = {
     }),
     adicionales: (e, P) => [
       { concepto: "Curvas", importe: e.secciones * P.adicionales.curvasPorSeccion },
-      ...(e.enchapado ? [] : [{ concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.fc }])
+      ...(e.enchapado ? [] : [{ concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.fc, nota: "Sólo en la versión sin enchapar: en la enchapada ya van dentro del precio/metro" }])
     ]
   },
 
@@ -126,8 +138,9 @@ export const PERFILES = {
     campos: [N("secDobles","Secciones dobles",1,"ej. 4"), A("ej. 2.30"), N("uniones","Uniones",1,"0")],
     defaults: { uniones: 0 },
     ventDefault: sinVent,
-    bateria: (e, P) => ({ concepto: `Batería ${e.secDobles} sec dobles × ${num(e.ancho)}m`, importe: e.secDobles * e.ancho * P.tarifas.seccionDoble }),
-    adicionales: (e, P) => [{ concepto: `Uniones (${e.uniones})`, importe: e.uniones * P.adicionales.uniones }]
+    bateria: (e, P) => ({ concepto: `Batería ${e.secDobles} sec dobles × ${num(e.ancho)}m`, importe: e.secDobles * e.ancho * P.tarifas.seccionDoble,
+      nota: `${usd(P.tarifas.seccionDoble)} por sección doble por metro de ancho` }),
+    adicionales: (e, P) => [{ concepto: `Uniones (${e.uniones})`, importe: e.uniones * P.adicionales.uniones, nota: `${usd(P.adicionales.uniones)} cada una` }]
   },
 
   cub: {
@@ -150,10 +163,12 @@ export const PERFILES = {
       ? { concepto: `Batería enchapada ${e.bateria} × ${num(e.ancho)}m`, importe: deTabla(P.bateriaCubicoEnchapado, e.bateria, av, "Cúbico enchapado") * e.ancho }
       : { concepto: `Batería ${e.secDobles} sec dobles × ${num(e.ancho)}m`, importe: e.secDobles * P.tarifas.seccionDoble * e.ancho },
     adicionales: (e, P) => e.enchapado
-      ? [{ concepto: `Columnas y distribuidores (${e.hp}HP)`, importe: tramo(P.colDist.cubico, e.hp) }]
+      ? [{ concepto: `Columnas y distribuidores (${fmtHP(e.hp)}HP)`, importe: tramo(P.colDist.cubico, e.hp),
+          nota: "Arranca en 2HP. 2 y 2,5HP = $30 · 3 y 4HP = $40 · 5HP = $45 · 6HP = $50" }]
       : [
-          { concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.cub },
-          { concepto: `Columnas y distribuidores (${e.hp}HP)`, importe: tramo(P.colDist.cubicoSC, e.hp) }
+          { concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.cub, nota: "Sólo sin enchapar. En la versión enchapada ya están en el precio/metro" },
+          { concepto: `Columnas y distribuidores (${fmtHP(e.hp)}HP)`, importe: tramo(P.colDist.cubicoSC, e.hp),
+          nota: "Sin enchapar paga $10 más en cada tramo. Arranca en 2HP: 2 y 2,5HP = $40 · 3 y 4HP = $50 · 5HP = $55 · 6HP = $60" }
         ]
   },
 
@@ -173,8 +188,9 @@ export const PERFILES = {
       ? { concepto: `Batería enchapada ${e.secDobles} sec dobles × ${num(e.ancho)}m`, importe: deTabla(P.precioMetro.respaldoCamara, e.secDobles, av, "Respaldo de cámara") * e.ancho }
       : { concepto: `Batería ${e.secDobles} sec dobles × ${num(e.ancho)}m`, importe: e.secDobles * P.tarifas.seccionDoble * e.ancho },
     adicionales: (e, P) => [
-      ...(e.enchapado ? [] : [{ concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.rcam }]),
-      { concepto: `Columnas y distribuidores (${e.hp}HP)`, importe: tramo(P.colDist.rcam, e.hp) }
+      ...(e.enchapado ? [] : [{ concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.rcam, nota: "Sólo sin enchapar. En la versión enchapada ya están en el precio/metro" }]),
+      { concepto: `Columnas y distribuidores (${fmtHP(e.hp)}HP)`, importe: tramo(P.colDist.rcam, e.hp),
+        nota: "Arranca en 2HP. 2HP = $30 · 3HP = $40. Es igual con y sin enchapado" }
     ]
   },
 
@@ -188,9 +204,10 @@ export const PERFILES = {
     ventDefault: e => (e.enchapado ? v("v250", 1) : sinVent()),
     bateria: (e, P) => ({ concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m`, importe: e.secciones * e.ancho * P.tarifas.seccionDoble }),
     adicionales: (e, P, av) => [
-      { concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.t58 },
-      { concepto: "Salida de cobre", importe: P.adicionales.salidaCu },
-      ...(e.enchapado ? [{ concepto: `Bandeja plástica ${e.bandeja}mm`, importe: deTabla(P.adicionales.bandeja, e.bandeja, av, "Bandeja") }] : [])
+      { concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.t58, nota: "Van en las dos versiones: la bandeja no los reemplaza" },
+      { concepto: "Salida de cobre", importe: P.adicionales.salidaCu, nota: "Importe fijo por equipo" },
+      ...(e.enchapado ? [{ concepto: `Bandeja plástica ${e.bandeja}mm`, importe: deTabla(P.adicionales.bandeja, e.bandeja, av, "Bandeja"),
+          nota: `800mm = ${usd(P.adicionales.bandeja[800])} · 1000mm = ${usd(P.adicionales.bandeja[1000])}` }] : [])
     ]
   },
 
@@ -204,9 +221,9 @@ export const PERFILES = {
     ventDefault: e => (e.enchapado ? v("v250", 1) : sinVent()),
     bateria: (e, P) => ({ concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m`, importe: e.secciones * e.ancho * P.tarifas.compacto38 }),
     adicionales: (e, P, av) => [
-      { concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.t38 },
-      { concepto: "Columnas y distribuidores", importe: P.adicionales.colDistTecho38 },
-      { concepto: "Curvas", importe: P.adicionales.curvas },
+      { concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.t38, nota: "Van en las dos versiones: la bandeja no los reemplaza" },
+      { concepto: "Columnas y distribuidores", importe: P.adicionales.colDistTecho38, nota: "Importe fijo en los de techo 3/8\"" },
+      { concepto: "Curvas", importe: P.adicionales.curvas, nota: "Importe fijo en los de techo 3/8\"" },
       ...(e.enchapado ? [{ concepto: `Bandeja plástica ${e.bandeja}mm`, importe: deTabla(P.adicionales.bandeja, e.bandeja, av, "Bandeja") }] : [])
     ]
   },
@@ -233,7 +250,7 @@ export const PERFILES = {
       concepto: `Batería ${e.secciones} sec dobles × ${num(e.ancho)}m`,
       importe: deTabla(P.precioMetro.dobleAtaque, e.secciones, av, "Doble ataque") * e.ancho
     }),
-    adicionales: (e, P) => [{ concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.da }]
+    adicionales: (e, P) => [{ concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.da, nota: "Importe fijo" }]
   },
 
   cond: {
@@ -259,7 +276,8 @@ export const PERFILES = {
       importe: deTabla(P.condensadores.precio, e.hp, av, "Condensador")
     }),
     adicionales: (e, P, av) => e.conBase
-      ? [{ concepto: "Base", importe: deTabla(P.condensadores.base, e.hp, av, "Base de condensador") }]
+      ? [{ concepto: "Base", importe: deTabla(P.condensadores.base, e.hp, av, "Base de condensador"),
+          nota: `${usd(P.condensadores.base[0.25])} hasta 1/2HP · ${usd(P.condensadores.base[0.75])} en 3/4 y 1HP` }]
       : []
   },
 
@@ -277,7 +295,7 @@ export const PERFILES = {
       if (e.secciones !== 3 && e.secciones !== 4) av.push({ nivel: "error", msg: "Piso torteras: sólo 3 o 4 secciones" });
       return { concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m`, importe: pm * e.ancho };
     },
-    adicionales: (e, P) => e.enchapado ? [] : [{ concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.pt }]
+    adicionales: (e, P) => e.enchapado ? [] : [{ concepto: "Costados de aluminio", importe: P.adicionales.costadosAluminio.pt, nota: "Sólo sin enchapar" }]
   }
 };
 

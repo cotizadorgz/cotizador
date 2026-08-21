@@ -211,6 +211,17 @@ input[type=number]:focus, input[type=text]:focus, select:focus { outline: 2px so
 .caja-desglose[open] summary { border-bottom: 1px solid var(--borde); }
 .caja-desglose .desglose { padding: 0 12px 8px; }
 .col-tilde { width: 30px; }
+.con-nota { cursor: pointer; text-decoration: underline dotted var(--texto3); text-underline-offset: 3px; }
+.con-nota:hover { color: var(--royal); }
+tr.nota td {
+  padding: 8px 10px; font-size: 12px; line-height: 1.45; color: var(--texto2);
+  background: color-mix(in srgb, var(--royal) 9%, transparent);
+  border-bottom: 1px solid var(--borde); border-radius: 0 0 8px 8px;
+}
+.nombre-libre { width: 100%; padding: 5px 8px; font-size: 13px; }
+.nombre-libre:disabled { opacity: .4; }
+.monto-libre { width: 90px; text-align: right; padding: 5px 8px; font-size: 13px; }
+.monto-libre:disabled { opacity: .4; }
 .col-tilde input { width: 17px; height: 17px; accent-color: var(--royal); cursor: pointer; }
 tr.fuera td { opacity: .45; text-decoration: line-through; }
 tr.fuera .col-tilde { text-decoration: none; }

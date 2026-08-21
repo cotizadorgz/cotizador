@@ -1,4 +1,4 @@
-import { PERFILES } from "../src/perfiles.js";
+import { PERFILES, ORDEN } from "../src/perfiles.js";
 import { cotizar, presupuestar, r2, textoCliente, textoPresupuesto, preciosPresupuesto, etiquetaCliente, preciosVenta } from "../src/motor.js";
 import { PRECIOS } from "../src/precios.js";
 import * as L from "../src/lista-publicada.js";
@@ -243,6 +243,123 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
   const limpio = textoCliente(PERFILES.t58, completo, ["iva"]);
   chkOk("Sacar ítems", "Sin exclusiones no aparece la aclaración", !limpio.includes("No incluye"));
   PRECIOS.venta.dolarOficial = null;
+}
+
+// ── Los 15 productos cotizan ─────────────────────────────────────────────────
+// Barrido de todo el catálogo con valores válidos: ninguno puede quedar trabado.
+{
+  const entradas = {
+    ev:   { secciones: 6, ancho: 0.5 },
+    oli:  { secciones: 9, ancho: 0.5 },
+    resp: { secciones: 4, ancho: 0.6 },
+    fd:   { secciones: 4, ancho: 0.5 },
+    fs:   { secciones: 4, ancho: 0.5 },
+    fc:   { secciones: 12, ancho: 0.36 },
+    col:  { secDobles: 4, ancho: 2.3 },
+    cub:  { hp: 0.75, bateria: "3F4C", ancho: 0.85 },
+    rcam: { hp: 0.5, secDobles: 4, ancho: 1 },
+    t58:  { secciones: 6, ancho: 0.35, bandeja: 800 },
+    t38:  { secciones: 16, ancho: 0.33, bandeja: 800 },
+    car:  { dobles: false, ancho: 1.2, cantVent: 2 },
+    da:   { secciones: 5, ancho: 0.6 },
+    pt:   { secciones: 3, ancho: 0.8 },
+    cond: { hp: 0.25 }
+  };
+  const esperados = {
+    ev: 97.50, oli: 100.25, resp: 74.88, fd: 115.50, fs: 133.50, fc: 144.18,
+    col: 220.80, cub: 263.70, rcam: 231, t58: 147.40, t38: 232.60,
+    car: 241.80, da: 195.80, pt: 152.60, cond: 64.80
+  };
+  for (const pid of ORDEN) {
+    const c = cotizar(PERFILES[pid], { enchapado: true, ...entradas[pid] });
+    chk("Todos cotizan", `${PERFILES[pid].nombre}`, esperados[pid], c.base);
+    chkOk("Todos cotizan", `${pid} sin avisos`, c.avisos.length === 0, c.avisos.map(a => a.msg).join(" | "));
+  }
+  // Los valores por defecto del perfil tienen que alcanzar para cotizar:
+  // la columna para batea no puede quedar trabada por el campo de uniones.
+  const sinUniones = cotizar(PERFILES.col, { secDobles: 4, ancho: 2.3 });
+  chk("Todos cotizan", "Columna sin tocar uniones", 220.80, sinUniones.base);
+  chkOk("Todos cotizan", "El perfil trae uniones por defecto", PERFILES.col.defaults.uniones === 0);
+}
+
+// ── Colector y distribuidor a mano ───────────────────────────────────────────
+{
+  const base = cotizar(PERFILES.fd, { enchapado: false, secciones: 7, ancho: 0.55 });
+  chk("Colector a mano", "Sin colector", 104.40, base.base);
+  const con = cotizar(PERFILES.fd, { enchapado: false, secciones: 7, ancho: 0.55, colector: 45.50 });
+  chk("Colector a mano", "Con colector de $45,50", 149.90, con.base);
+  chkOk("Colector a mano", "Aparece como renglón propio",
+        con.desglose.some(d => d.concepto === "Colector y distribuidor" && d.importe === 45.50));
+  chkOk("Colector a mano", "Queda marcado como manual, no lo dibuja el motor",
+        con.desglose.find(d => d.concepto === "Colector y distribuidor").manual === true);
+  chkOk("Colector a mano", "El texto al cliente lo aclara",
+        etiquetaCliente(PERFILES.fd, con.entrada).includes("con colector y distribuidor"),
+        etiquetaCliente(PERFILES.fd, con.entrada));
+  chkOk("Colector a mano", "Sin colector no aclara nada",
+        !etiquetaCliente(PERFILES.fd, base.entrada).includes("colector"));
+  // Se puede sacar como cualquier otro componente.
+  const sacado = cotizar(PERFILES.fd, { enchapado: false, secciones: 7, ancho: 0.55,
+    colector: 45.50, excluidos: ["Colector y distribuidor"] });
+  chk("Colector a mano", "Destildado no suma", 104.40, sacado.base);
+  // Y en un producto que ya trae col/dist propio conviven sin pisarse.
+  const cub = cotizar(PERFILES.cub, { enchapado: true, hp: 2, bateria: "5F6C", ancho: 0.9, colector: 20 });
+  chk("Colector a mano", "En el cúbico se suma al col/dist automático", r2(578.70 + 20), cub.base);
+}
+
+// ── Ítem libre ───────────────────────────────────────────────────────────────
+{
+  const base = cotizar(PERFILES.fd, { enchapado: false, secciones: 7, ancho: 0.55 });
+  const con = cotizar(PERFILES.fd, { enchapado: false, secciones: 7, ancho: 0.55,
+    extra: { nombre: "Patas reforzadas", importe: 32.50 } });
+  chk("Ítem libre", "Suma al total", 136.90, con.base);
+  chkOk("Ítem libre", "Sale con el nombre que le pusiste",
+        con.desglose.some(d => d.concepto === "Patas reforzadas" && d.importe === 32.50));
+  chkOk("Ítem libre", "El texto al cliente lo nombra",
+        etiquetaCliente(PERFILES.fd, con.entrada).includes("con patas reforzadas"),
+        etiquetaCliente(PERFILES.fd, con.entrada));
+
+  // Sin nombre se cobra igual, pero identificado.
+  const anonimo = cotizar(PERFILES.fd, { enchapado: false, secciones: 7, ancho: 0.55,
+    extra: { nombre: "", importe: 32.50 } });
+  chk("Ítem libre", "Sin nombre suma igual", 136.90, anonimo.base);
+  chkOk("Ítem libre", "Sin nombre se llama Adicional, nunca queda sin identificar",
+        anonimo.desglose.some(d => d.concepto === "Adicional"));
+
+  // Sin importe no aparece.
+  const vacio = cotizar(PERFILES.fd, { enchapado: false, secciones: 7, ancho: 0.55,
+    extra: { nombre: "Algo", importe: 0 } });
+  chk("Ítem libre", "Sin importe no suma nada", base.base, vacio.base);
+  chkOk("Ítem libre", "Sin importe no aparece en el desglose", !vacio.desglose.some(d => d.manual));
+
+  // Los dos libres juntos.
+  const dos = cotizar(PERFILES.fd, { enchapado: false, secciones: 7, ancho: 0.55,
+    colector: 45.50, extra: { nombre: "Patas reforzadas", importe: 32.50 } });
+  chk("Ítem libre", "Colector e ítem libre juntos", 182.40, dos.base);
+  chkOk("Ítem libre", "Los dos se aclaran en el texto",
+        etiquetaCliente(PERFILES.fd, dos.entrada).includes("colector y distribuidor") &&
+        etiquetaCliente(PERFILES.fd, dos.entrada).includes("patas reforzadas"));
+}
+
+// ── Explicaciones del desglose ───────────────────────────────────────────────
+{
+  const c = cotizar(PERFILES.fd, { enchapado: false, secciones: 7, ancho: 0.55 });
+  const nota = concepto => c.desglose.find(d => d.concepto.includes(concepto))?.nota;
+  chkOk("Explicaciones", "Los costados explican su rango",
+        nota("Costados") === "$8 de 2 a 5 secciones · $12 de 6 a 7", nota("Costados"));
+  chkOk("Explicaciones", "La batería explica su tarifa",
+        (nota("Batería") || "").includes("por sección doble por metro"), nota("Batería"));
+  const ench = cotizar(PERFILES.fd, { enchapado: true, secciones: 7, ancho: 0.55 });
+  const nEnch = ench.desglose.find(d => d.concepto.includes("Batería")).nota;
+  chkOk("Explicaciones", "La batería enchapada muestra la tabla de precio/metro",
+        nEnch.includes("2 = $83") && nEnch.includes("7 = $248"), nEnch);
+  chkOk("Explicaciones", "El ventilador explica el markup",
+        ench.desglose.find(d => /ventilador/.test(d.concepto)).nota.includes("50%"));
+  const t = cotizar(PERFILES.t58, { enchapado: true, secciones: 6, ancho: 0.35, bandeja: 800 });
+  chkOk("Explicaciones", "La bandeja muestra los dos tamaños",
+        t.desglose.find(d => /Bandeja/.test(d.concepto)).nota.includes("1000mm"));
+  const cub = cotizar(PERFILES.cub, { enchapado: true, hp: 3, bateria: "5F6C", ancho: 1.4 });
+  chkOk("Explicaciones", "El col/dist explica que arranca en 2HP",
+        cub.desglose.find(d => /Columnas/.test(d.concepto)).nota.includes("Arranca en 2HP"));
 }
 
 // ── Coma o punto ─────────────────────────────────────────────────────────────

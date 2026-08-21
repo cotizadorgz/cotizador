@@ -18,6 +18,11 @@ export function redondeo075(n) {
 
 export const VENT_CERO = { v200: 0, v250: 0, v300: 0 };
 
+const costoTexto = (tipo, tarifa, P) => {
+  const base = tarifa === "fija" ? P.ventiladores.costoFijo : P.ventiladores.tipos[tipo].costo;
+  return `$${String(base).replace(".", ",")}`;
+};
+
 export function calcularVentiladores(vents, tarifa, P = PRECIOS) {
   const items = [];
   let total = 0;
@@ -26,7 +31,11 @@ export function calcularVentiladores(vents, tarifa, P = PRECIOS) {
     if (!cant) continue;
     const unit = r2(costoVentilador(tipo, tarifa, P));
     const imp = r2(cant * unit);
-    items.push({ concepto: `${cant} × ventilador ${P.ventiladores.tipos[tipo].nombre}`, unitario: unit, importe: imp });
+    items.push({
+      concepto: `${cant} × ventilador ${P.ventiladores.tipos[tipo].nombre}`,
+      unitario: unit, importe: imp,
+      nota: `Costo ${costoTexto(tipo, tarifa, P)} + ${(P.ventiladores.markup - 1) * 100}% = ${unit.toFixed(2).replace(".", ",")} cada uno`
+    });
     total = r2(total + imp);
   }
   return { items, total };
@@ -60,7 +69,7 @@ export function cotizar(perfil, entrada, P = PRECIOS) {
   const marcar = c => ({ ...c, componente: true, excluido: excluidos.has(c.concepto) });
 
   const bateria = perfil.bateria(e, P, avisos);
-  const bat = marcar({ concepto: bateria.concepto, importe: r2(bateria.importe) });
+  const bat = marcar({ ...bateria, importe: r2(bateria.importe) });
 
   const tarifa = typeof perfil.ventTarifa === "function" ? perfil.ventTarifa(e) : (perfil.ventTarifa || "real");
   const vent = calcularVentiladores(e.vents, tarifa, P);
@@ -71,10 +80,28 @@ export function cotizar(perfil, entrada, P = PRECIOS) {
     .filter(a => a && a.importe)
     .map(a => marcar({ ...a, importe: r2(a.importe) }));
 
+  if (e.colector) {
+    adicionales.push(marcar({
+      concepto: "Colector y distribuidor", importe: r2(e.colector), manual: true,
+      nota: "Importe libre: lo ponés vos según el equipo"
+    }));
+  }
+
+  // Ítem libre: nombre e importe los pone el usuario. Si no le pone nombre se
+  // cobra igual, pero como "Adicional" — nunca como un cargo sin identificar.
+  if (e.extra && e.extra.importe) {
+    adicionales.push(marcar({
+      concepto: (e.extra.nombre || "").trim() || "Adicional",
+      importe: r2(e.extra.importe), manual: true,
+      nota: "Ítem agregado a mano para esta cotización"
+    }));
+  }
+
   for (const aj of P.ajustes || []) {
     if (aj.perfil !== perfil.id) continue;
     if (Object.entries(aj.condicion).every(([k, v]) => e[k] === v)) {
-      adicionales.push(marcar({ concepto: aj.concepto, importe: r2(aj.importe), ajuste: aj.id }));
+      adicionales.push(marcar({ concepto: aj.concepto, importe: r2(aj.importe), ajuste: aj.id,
+        nota: "Diferencia entre la lista impresa y la fórmula. Sin explicar todavía." }));
     }
   }
 
@@ -202,6 +229,8 @@ export function etiquetaCliente(perfil, e, P = PRECIOS) {
   if (perfil.chapa && !e.enchapado && perfil.textoSinChapa) t += ` — ${perfil.textoSinChapa}`;
   if (e.reforzado) t += " — con ventiladores 300mm reforzados";
   if (e.bajaTemp && perfil.bajaTemp) t += " — incluye opcional Baja Temperatura";
+  if (e.colector) t += " — con colector y distribuidor";
+  if (e.extra && e.extra.importe) t += ` — con ${((e.extra.nombre || "").trim() || "adicional").toLowerCase()}`;
   // Casillas propias del producto. Las que están puestas se juntan en un solo
   // "con A y B", y las que faltan en un "sin A y B". `orden` decide cómo se leen.
   const con = [], sin = [];

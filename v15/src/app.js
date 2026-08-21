@@ -7,7 +7,7 @@ import * as H from "./historial.js";
 
 // Se sube a mano en cada publicación. Sirve para confirmar de un vistazo que el
 // navegador cargó la versión nueva y no una copia guardada.
-export const VERSION = "15.6";
+export const VERSION = "15.8";
 
 const $ = id => document.getElementById(id);
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
@@ -71,6 +71,8 @@ function ordenGuardado() {
 const estado = {
   pid: null, modo: "modelo", modelo: 0, entrada: {}, vents: null,
   filas: new Set(), eligiendo: false, calculado: false, excluidos: [],
+  colectorActivo: false, colectorMonto: 0,
+  extraActivo: false, extraNombre: "", extraMonto: 0,
   orden: [], customizando: false,
   lineas: pedidoGuardado.lineas || [],
   // El embalaje arranca en 0 salvo que hayas dejado un pedido a medio armar:
@@ -101,7 +103,10 @@ function elegirProducto(pid) {
   estado.modelo = 0;
   estado.vents = null;
   $("cantidad").value = 1;   // la cantidad es de cada ítem, no se arrastra
+  // Los valores por defecto del perfil (por ejemplo uniones: 0) tienen que llegar
+  // al formulario: si no, el campo queda vacío y Calcular no se habilita nunca.
   estado.entrada = { enchapado: true, bajaTemp: false, reforzado: false,
+    ...(PERFILES[pid].defaults || {}),
     ...(tieneCatalogo(pid) ? entradaDesdeModelo(pid, 0) : {}) };
   // Valores de arranque para los productos sin catálogo.
   for (const c of PERFILES[pid].campos) {
@@ -328,6 +333,7 @@ function dibujarVentiladores() {
 function dibujarResultado(cot) {
   const tabla = $("desglose"); tabla.innerHTML = "";
   for (const linea of cot.desglose) {
+    if (linea.manual) continue;   // el colector se dibuja aparte, editable
     const tr = el("tr");
     if (linea.ajuste) tr.className = "ajuste";
     if (linea.excluido) tr.classList.add("fuera");
@@ -345,8 +351,79 @@ function dibujarResultado(cot) {
       celdaTilde.appendChild(chk);
     }
     tr.appendChild(celdaTilde);
-    tr.appendChild(el("td", null, linea.concepto));
+    const tdNombre = el("td", null, linea.concepto);
+    if (linea.nota) {
+      tdNombre.classList.add("con-nota");
+      tdNombre.title = "Tocá para ver cómo se calcula";
+      tdNombre.onclick = () => {
+        const abierta = tr.nextSibling && tr.nextSibling.classList?.contains("nota");
+        tabla.querySelectorAll("tr.nota").forEach(n => n.remove());
+        if (abierta) return;
+        const fila = el("tr", "nota");
+        fila.appendChild(el("td"));
+        const td = el("td", null, linea.nota); td.colSpan = 2;
+        fila.appendChild(td);
+        tr.after(fila);
+      };
+    }
+    tr.appendChild(tdNombre);
     tr.appendChild(el("td", null, fmtUSD(linea.importe)));
+    tabla.appendChild(tr);
+  }
+  // Colector y distribuidor: destildado por defecto, con el importe a mano.
+  {
+    const tr = el("tr", "fila-colector");
+    const celda = el("td", "col-tilde");
+    const chk = el("input"); chk.type = "checkbox"; chk.checked = estado.colectorActivo;
+    chk.onchange = () => { estado.colectorActivo = chk.checked; recalcular(); };
+    celda.appendChild(chk);
+    tr.appendChild(celda);
+    tr.appendChild(el("td", null, "Colector y distribuidor"));
+    const tdMonto = el("td");
+    const monto = el("input", "monto-libre");
+    monto.type = "text"; monto.inputMode = "decimal"; monto.placeholder = "USD";
+    monto.value = estado.colectorMonto || "";
+    monto.disabled = !estado.colectorActivo;
+    monto.oninput = () => {
+      estado.colectorMonto = leerNumero(monto.value) || 0;
+      if (estado.colectorActivo) recalcularSuave();
+    };
+    tdMonto.appendChild(monto);
+    tr.appendChild(tdMonto);
+    tabla.appendChild(tr);
+  }
+  // Ítem libre: nombre e importe a elección.
+  {
+    const tr = el("tr", "fila-colector");
+    const celda = el("td", "col-tilde");
+    const chk = el("input"); chk.type = "checkbox"; chk.checked = estado.extraActivo;
+    chk.onchange = () => { estado.extraActivo = chk.checked; recalcular(); };
+    celda.appendChild(chk);
+    tr.appendChild(celda);
+
+    const tdNombre = el("td");
+    const nombre = el("input", "nombre-libre");
+    nombre.type = "text"; nombre.placeholder = "Nuevo ítem"; nombre.autocomplete = "off";
+    nombre.value = estado.extraNombre;
+    nombre.disabled = !estado.extraActivo;
+    nombre.oninput = () => {
+      estado.extraNombre = nombre.value;
+      if (estado.extraActivo) recalcularSuave();
+    };
+    tdNombre.appendChild(nombre);
+    tr.appendChild(tdNombre);
+
+    const tdMonto = el("td");
+    const monto = el("input", "monto-libre");
+    monto.type = "text"; monto.inputMode = "decimal"; monto.placeholder = "USD";
+    monto.value = estado.extraMonto || "";
+    monto.disabled = !estado.extraActivo;
+    monto.oninput = () => {
+      estado.extraMonto = leerNumero(monto.value) || 0;
+      if (estado.extraActivo) recalcularSuave();
+    };
+    tdMonto.appendChild(monto);
+    tr.appendChild(tdMonto);
     tabla.appendChild(tr);
   }
   if (estado.embalaje) {
@@ -365,7 +442,11 @@ function dibujarResultado(cot) {
   $("resumenDesglose").textContent = fmtUSD(totalUSD) +
     (cot.noIncluye.length ? ` · ${cot.noIncluye.length} ítem${cot.noIncluye.length > 1 ? "s" : ""} sin incluir` : "");
 
-  // Mismo cálculo que el presupuesto: un ítem suelto es un pedido de un ítem.
+  dibujarPrecios(cot);
+}
+
+// Mismo cálculo que el presupuesto: un ítem suelto es un pedido de un ítem.
+function dibujarPrecios(cot) {
   const cont = $("precios"); cont.innerHTML = "";
   const unaLinea = [{ etiqueta: etiquetaCliente(perfilActual(), cot.entrada), total: cot.total }];
   for (const fila of preciosPresupuesto(unaLinea, estado.embalaje)) {
@@ -545,6 +626,8 @@ let ultima = null;
 function invalidar() {
   estado.calculado = false;
   estado.excluidos = [];   // cambian los componentes: los tildes vuelven a empezar
+  estado.colectorActivo = false; estado.colectorMonto = 0;
+  estado.extraActivo = false; estado.extraNombre = ""; estado.extraMonto = 0;
   ultima = null;
   $("resultado").hidden = true;
   $("btnCalcular").disabled = !estado.pid || !entradaCompleta();
@@ -552,6 +635,26 @@ function invalidar() {
 
 function entradaCompleta() {
   return camposVisibles().every(c => estado.entrada[c.id] !== "" && estado.entrada[c.id] != null);
+}
+
+// Recalcula sin redibujar el desglose, para no robarle el foco al campo del colector.
+function recalcularSuave() {
+  if (!estado.calculado || !entradaCompleta()) return;
+  const entrada = {
+    ...estado.entrada,
+    cantidad: Math.max(1, leerNumero($("cantidad").value) || 1),
+    embalaje: 0,
+    excluidos: estado.excluidos,
+    colector: estado.colectorActivo ? estado.colectorMonto : 0,
+    extra: estado.extraActivo ? { nombre: estado.extraNombre, importe: estado.extraMonto } : null
+  };
+  if (estado.vents) entrada.vents = estado.vents;
+  ultima = cotizar(perfilActual(), entrada);
+  const totalUSD = r2(ultima.total + estado.embalaje);
+  $("desglose").querySelector("tr:last-child td:last-child").textContent = fmtUSD(totalUSD);
+  $("resumenDesglose").textContent = fmtUSD(totalUSD) +
+    (ultima.noIncluye.length ? ` · ${ultima.noIncluye.length} ítem${ultima.noIncluye.length > 1 ? "s" : ""} sin incluir` : "");
+  dibujarPrecios(ultima);
 }
 
 function recalcular() {
@@ -565,6 +668,8 @@ function recalcular() {
   };
   if (estado.vents) entrada.vents = estado.vents;
   entrada.excluidos = estado.excluidos;
+  entrada.colector = estado.colectorActivo ? estado.colectorMonto : 0;
+  entrada.extra = estado.extraActivo ? { nombre: estado.extraNombre, importe: estado.extraMonto } : null;
   ultima = cotizar(perfilActual(), entrada);
   $("resultado").hidden = false;
   dibujarResultado(ultima);
