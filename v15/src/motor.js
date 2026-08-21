@@ -53,24 +53,33 @@ export function cotizar(perfil, entrada, P = PRECIOS) {
 
   validarRangos(perfil, e, avisos, P);
 
+  // Se puede sacar un componente del presupuesto sin cambiar el producto: la línea
+  // sigue a la vista con su importe, pero no suma. Los renglones derivados —baja
+  // temperatura, cantidad, embalaje— no se pueden destildar: son consecuencia.
+  const excluidos = new Set(e.excluidos || []);
+  const marcar = c => ({ ...c, componente: true, excluido: excluidos.has(c.concepto) });
+
   const bateria = perfil.bateria(e, P, avisos);
-  const bat = { concepto: bateria.concepto, importe: r2(bateria.importe) };
+  const bat = marcar({ concepto: bateria.concepto, importe: r2(bateria.importe) });
 
   const tarifa = typeof perfil.ventTarifa === "function" ? perfil.ventTarifa(e) : (perfil.ventTarifa || "real");
   const vent = calcularVentiladores(e.vents, tarifa, P);
+  vent.items = vent.items.map(marcar);
+  vent.total = r2(vent.items.filter(i => !i.excluido).reduce((s, i) => s + i.importe, 0));
 
   const adicionales = (perfil.adicionales ? perfil.adicionales(e, P, avisos) : [])
     .filter(a => a && a.importe)
-    .map(a => ({ ...a, importe: r2(a.importe) }));
+    .map(a => marcar({ ...a, importe: r2(a.importe) }));
 
   for (const aj of P.ajustes || []) {
     if (aj.perfil !== perfil.id) continue;
     if (Object.entries(aj.condicion).every(([k, v]) => e[k] === v)) {
-      adicionales.push({ concepto: aj.concepto, importe: r2(aj.importe), ajuste: aj.id });
+      adicionales.push(marcar({ concepto: aj.concepto, importe: r2(aj.importe), ajuste: aj.id }));
     }
   }
 
-  let base = r2(bat.importe + vent.total + adicionales.reduce((s, a) => s + a.importe, 0));
+  let base = r2((bat.excluido ? 0 : bat.importe) + vent.total +
+    adicionales.filter(a => !a.excluido).reduce((s, a) => s + a.importe, 0));
   if (perfil.ajustePost) base = perfil.ajustePost(base, e, P);
 
   if (e.reforzado && !perfil.reforzable) {
@@ -86,6 +95,7 @@ export function cotizar(perfil, entrada, P = PRECIOS) {
   return {
     perfil: perfil.id, entrada: e, avisos,
     bateria: bat, ventiladores: vent, adicionales,
+    noIncluye: [bat, ...vent.items, ...adicionales].filter(c => c.excluido).map(c => c.concepto),
     base, factorBT, baseFinal, cantidad: e.cantidad, embalaje: r2(e.embalaje), total,
     desglose: [
       bat,
@@ -120,8 +130,11 @@ export function textoPresupuesto(lineas, embalaje, filas = ["lista"], P = PRECIO
     // Con un solo ítem el encabezado es el producto, no la palabra "Presupuesto".
     const solo = lineas.length === 1;
     const partes = [`*${solo ? lineas[0].etiqueta : `${lineas.length} ítems`}*`];
-    for (const d of f.detalle) {
-      partes.push(`• ${solo && d.etiqueta === lineas[0].etiqueta ? "Equipo" : d.etiqueta} → ${mostrar(d.importe)}`);
+    for (let i = 0; i < f.detalle.length; i++) {
+      const d = f.detalle[i];
+      const nombre = solo && d.etiqueta === lineas[0].etiqueta ? "Equipo" : d.etiqueta;
+      const falta = lineas[i]?.noIncluye;
+      partes.push(`• ${nombre} → ${mostrar(d.importe)}` + (falta && falta.length ? `\n  _sin ${listaFalta(falta)}_` : ""));
     }
     partes.push(`*Total: ${mostrar(f.total)}*${f.id === "iva" || f.id === "ml" ? " (IVA incluido)" : f.id === "lista" ? " (no incluye IVA)" : ""}`);
     if (f.id !== "ml" && dof) partes.push(`_Dólar oficial: ${fmtARS(dof)}_`);
@@ -195,8 +208,14 @@ export function etiquetaCliente(perfil, e, P = PRECIOS) {
 }
 
 // filas = ids de precio elegidos, en el orden en que se muestran.
+// "Salida de cobre" → "salida de cobre": van en medio de una frase.
+const enMinuscula = t => t.charAt(0).toLowerCase() + t.slice(1);
+const listaFalta = lista => (lista || []).map(enMinuscula).join(", ");
+const lineaNoIncluye = lista =>
+  (lista && lista.length ? `\n_No incluye: ${listaFalta(lista)}_` : "");
+
 export function textoCliente(perfil, cot, filas = ["lista"], P = PRECIOS, meta = {}) {
-  const enc = `*${etiquetaCliente(perfil, cot.entrada)}*`;
+  const enc = `*${etiquetaCliente(perfil, cot.entrada)}*` + lineaNoIncluye(cot.noIncluye);
   const dof = P.venta.dolarOficial ? `\n_Dólar oficial: ${fmtARS(P.venta.dolarOficial)}_` : "";
   const bloques = preciosVenta(cot.total, P).filter(r => filas.includes(r.id)).map(r => {
     if (r.id === "ml") return `${enc}\n• MercadoLibre ${fmtARS(r.ars)} (IVA incluido)`;

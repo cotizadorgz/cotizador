@@ -200,6 +200,50 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
         et("ev", { secciones: 6, ancho: 0.5 }).includes("0,50m") && et("col", { secDobles: 3, ancho: 3.7, uniones: 0 }).includes("3,70m"));
 }
 
+// ── Ítems que se sacan del desglose ──────────────────────────────────────────
+{
+  const completo = cotizar(PERFILES.t58, { enchapado: true, secciones: 6, ancho: 0.35, bandeja: 800 });
+  chk("Sacar ítems", "Techo 1/3HP completo", 147.40, completo.base);
+  chkOk("Sacar ítems", "Sin exclusiones no hay nada que aclarar", completo.noIncluye.length === 0);
+
+  const sinCobre = cotizar(PERFILES.t58, { enchapado: true, secciones: 6, ancho: 0.35, bandeja: 800,
+    excluidos: ["Salida de cobre"] });
+  chk("Sacar ítems", "Sin la salida de cobre descuenta $8", 139.40, sinCobre.base);
+  chkOk("Sacar ítems", "La línea sigue a la vista con su importe",
+        sinCobre.desglose.some(d => d.concepto === "Salida de cobre" && d.importe === 8 && d.excluido));
+
+  const dos = cotizar(PERFILES.t58, { enchapado: true, secciones: 6, ancho: 0.35, bandeja: 800,
+    excluidos: ["Salida de cobre", "Bandeja plástica 800mm"] });
+  chk("Sacar ítems", "Sacando dos", 95.90, dos.base);
+  chkOk("Sacar ítems", "Las dos quedan anotadas", dos.noIncluye.length === 2, dos.noIncluye.join(" / "));
+
+  // Un ventilador también se puede sacar.
+  const sinVent = cotizar(PERFILES.t58, { enchapado: true, secciones: 6, ancho: 0.35, bandeja: 800,
+    excluidos: ["1 × ventilador 250mm"] });
+  chk("Sacar ítems", "Sin el ventilador descuenta $37,50", 109.90, sinVent.base);
+
+  // Lo derivado no se puede destildar: no lleva casillero.
+  const bt = cotizar(PERFILES.cub, { enchapado: true, hp: 2, bateria: "5F6C", ancho: 0.9, bajaTemp: true, cantidad: 2 });
+  chkOk("Sacar ítems", "La baja temperatura no es un componente",
+        !bt.desglose.find(d => /Baja temperatura/.test(d.concepto)).componente);
+  chkOk("Sacar ítems", "La cantidad tampoco",
+        !bt.desglose.find(d => /unidades/.test(d.concepto)).componente);
+
+  // La baja temperatura se aplica sobre lo que quedó.
+  const btSinVent = cotizar(PERFILES.cub, { enchapado: true, hp: 2, bateria: "5F6C", ancho: 0.9,
+    bajaTemp: true, excluidos: ["2 × ventilador 300mm"] });
+  chk("Sacar ítems", "Baja temperatura sobre la base ya recortada", r2((416.70 + 30) * 1.8), btSinVent.total);
+
+  // El texto lo aclara.
+  PRECIOS.venta.dolarOficial = 1515;
+  const t = textoCliente(PERFILES.t58, dos, ["iva"]);
+  chkOk("Sacar ítems", "El texto avisa qué no incluye",
+        t.includes("No incluye: salida de cobre, bandeja plástica 800mm"), t.split("\n")[3]);
+  const limpio = textoCliente(PERFILES.t58, completo, ["iva"]);
+  chkOk("Sacar ítems", "Sin exclusiones no aparece la aclaración", !limpio.includes("No incluye"));
+  PRECIOS.venta.dolarOficial = null;
+}
+
 // ── Historial ────────────────────────────────────────────────────────────────
 // Con una llave aparte, para no tocar el historial real de quien esté probando.
 {

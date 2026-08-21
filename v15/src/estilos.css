@@ -173,6 +173,22 @@ input[type=number]:focus, input[type=text]:focus, select:focus { outline: 2px so
 .stepper span { min-width: 22px; text-align: center; font-weight: 700; }
 
 /* ── Resultado ── */
+.caja-desglose { border: 1px solid var(--borde); border-radius: 10px; margin-bottom: 12px; }
+.caja-desglose summary {
+  padding: 11px 12px; cursor: pointer; display: flex; justify-content: space-between;
+  gap: 10px; font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .7px; color: var(--texto2);
+}
+.caja-desglose summary span:last-child {
+  text-transform: none; letter-spacing: 0; color: var(--texto); font-variant-numeric: tabular-nums;
+}
+.caja-desglose[open] summary { border-bottom: 1px solid var(--borde); }
+.caja-desglose .desglose { padding: 0 12px 8px; }
+.col-tilde { width: 30px; }
+.col-tilde input { width: 17px; height: 17px; accent-color: var(--royal); cursor: pointer; }
+tr.fuera td { opacity: .45; text-decoration: line-through; }
+tr.fuera .col-tilde { text-decoration: none; }
+
 .desglose, .panel-tabla { width: 100%; border-collapse: collapse; font-size: 14px; }
 .desglose td, .panel-tabla td { padding: 5px 0; border-bottom: 1px solid var(--borde); }
 .desglose td:last-child, .panel-tabla td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }

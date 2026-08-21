@@ -70,8 +70,10 @@
 
   <section class="tarjeta" id="resultado" hidden>
     <div id="avisos"></div>
-    <h2>Desglose</h2>
-    <table class="desglose" id="desglose"></table>
+    <details class="caja-desglose" id="cajaDesglose">
+      <summary><span>Desglose</span><span id="resumenDesglose"></span></summary>
+      <table class="desglose" id="desglose"></table>
+    </details>
     <div class="precios" id="precios"></div>
     <div class="botonera">
       <button class="copiar" id="btnCopiar">Copiar para el cliente</button>

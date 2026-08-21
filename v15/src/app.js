@@ -7,7 +7,7 @@ import * as H from "./historial.js";
 
 // Se sube a mano en cada publicación. Sirve para confirmar de un vistazo que el
 // navegador cargó la versión nueva y no una copia guardada.
-export const VERSION = "15.3";
+export const VERSION = "15.4";
 
 const $ = id => document.getElementById(id);
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
@@ -58,7 +58,7 @@ const pedidoGuardado = JSON.parse(localStorage.getItem(LLAVE_PED) || '{"lineas":
 // ── Estado de la pantalla ────────────────────────────────────────────────────
 const estado = {
   pid: null, modo: "modelo", modelo: 0, entrada: {}, vents: null,
-  filas: new Set(), eligiendo: false, calculado: false,
+  filas: new Set(), eligiendo: false, calculado: false, excluidos: [],
   lineas: pedidoGuardado.lineas || [],
   // El embalaje arranca en 0 salvo que hayas dejado un pedido a medio armar:
   // ahí se restaura junto con los ítems.
@@ -270,20 +270,40 @@ function dibujarResultado(cot) {
   for (const linea of cot.desglose) {
     const tr = el("tr");
     if (linea.ajuste) tr.className = "ajuste";
+    if (linea.excluido) tr.classList.add("fuera");
+    // Los componentes se pueden sacar; lo derivado de ellos no.
+    const celdaTilde = el("td", "col-tilde");
+    if (linea.componente) {
+      const chk = el("input"); chk.type = "checkbox"; chk.checked = !linea.excluido;
+      chk.title = "Sacar del presupuesto";
+      chk.onchange = () => {
+        estado.excluidos = chk.checked
+          ? estado.excluidos.filter(c => c !== linea.concepto)
+          : [...estado.excluidos, linea.concepto];
+        recalcular();
+      };
+      celdaTilde.appendChild(chk);
+    }
+    tr.appendChild(celdaTilde);
     tr.appendChild(el("td", null, linea.concepto));
     tr.appendChild(el("td", null, fmtUSD(linea.importe)));
     tabla.appendChild(tr);
   }
   if (estado.embalaje) {
     const tr = el("tr");
+    tr.appendChild(el("td", "col-tilde"));
     tr.appendChild(el("td", null, "Embalaje (uno por pedido)"));
     tr.appendChild(el("td", null, fmtUSD(estado.embalaje)));
     tabla.appendChild(tr);
   }
+  const totalUSD = r2(cot.total + estado.embalaje);
   const total = el("tr");
+  total.appendChild(el("td", "col-tilde"));
   total.appendChild(el("td", null, "Total"));
-  total.appendChild(el("td", null, fmtUSD(r2(cot.total + estado.embalaje))));
+  total.appendChild(el("td", null, fmtUSD(totalUSD)));
   tabla.appendChild(total);
+  $("resumenDesglose").textContent = fmtUSD(totalUSD) +
+    (cot.noIncluye.length ? ` · ${cot.noIncluye.length} ítem${cot.noIncluye.length > 1 ? "s" : ""} sin incluir` : "");
 
   // Mismo cálculo que el presupuesto: un ítem suelto es un pedido de un ítem.
   const cont = $("precios"); cont.innerHTML = "";
@@ -388,7 +408,8 @@ function agregarAlPresupuesto() {
     pid: estado.pid,
     etiqueta: etiquetaCliente(perfilActual(), ultima.entrada),
     cantidad: ultima.cantidad,
-    total: ultima.total
+    total: ultima.total,
+    noIncluye: ultima.noIncluye
   });
   guardarPedido();
   dibujarPresupuesto();
@@ -448,6 +469,7 @@ let ultima = null;
 // es porque corresponde a lo que hay cargado ahora.
 function invalidar() {
   estado.calculado = false;
+  estado.excluidos = [];   // cambian los componentes: los tildes vuelven a empezar
   ultima = null;
   $("resultado").hidden = true;
   $("btnCalcular").disabled = !estado.pid || !entradaCompleta();
@@ -467,6 +489,7 @@ function recalcular() {
     embalaje: 0
   };
   if (estado.vents) entrada.vents = estado.vents;
+  entrada.excluidos = estado.excluidos;
   ultima = cotizar(perfilActual(), entrada);
   $("resultado").hidden = false;
   dibujarResultado(ultima);
