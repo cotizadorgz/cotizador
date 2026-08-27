@@ -328,6 +328,8 @@ footer { padding: 18px; text-align: center; }
 .caja-ml { margin-top: 10px; }
 #cajaFicha { margin-top: 12px; }
 .ficha-adentro { padding: 12px; }
+.ficha-hp { margin-bottom: 12px; }
+.ficha-hp label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--texto2); }
 /* Sin esto la fila de Construcción, que es larga y no corta, empuja la tabla más
    ancha que la tarjeta y desborda toda la pantalla en el celular. */
 .ficha-adentro .panel-tabla { table-layout: fixed; }
@@ -336,10 +338,20 @@ footer { padding: 18px; text-align: center; }
 .ficha-adentro .panel-tabla td:last-child { text-align: right; font-weight: 600; }
 .ficha-adentro .copiar { margin-top: 10px; }
 .caja-ml a { display: block; margin: 6px 0; word-break: break-all; font-size: 12px; color: var(--royal); }
-.caja-ml .hist-copiar { margin-top: 4px; }
+.caja-ml .hist-ml {
+  font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px;
+  background: color-mix(in srgb, var(--ml) 18%, transparent); color: var(--ml);
+}
+.hist-link { display: block; margin: 8px 0 0; word-break: break-all; font-size: 12px; color: var(--royal); }
+.hist-copiar { margin-top: 4px; }
 
 /* ── Historial ── */
 .hist-adentro { padding: 12px; }
+.hist-ml {
+  font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px;
+  background: color-mix(in srgb, var(--ml) 18%, transparent); color: var(--ml);
+}
+.hist-link { display: block; margin: 8px 0 0; word-break: break-all; font-size: 12px; color: var(--royal); }
 .hist-copiar {
   border: 1px solid var(--borde2); background: var(--fondo2); color: var(--texto2);
   font: inherit; font-size: 11px; padding: 4px 10px; border-radius: 7px; cursor: pointer;

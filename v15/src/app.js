@@ -9,9 +9,10 @@ import * as Ficha from "./ficha.js";
 
 // Se sube a mano en cada publicación. Sirve para confirmar de un vistazo que el
 // navegador cargó la versión nueva y no una copia guardada.
-export const VERSION = "16.3";
+export const VERSION = "16.5";
 
 const $ = id => document.getElementById(id);
+const fmtHPtexto = h => ({ 0.25: "1/4", 0.33: "1/3", 0.5: "1/2", 0.75: "3/4" })[h] || String(h).replace(".", ",");
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 
 // ── Persistencia ─────────────────────────────────────────────────────────────
@@ -75,7 +76,7 @@ const estado = {
   filas: new Set(), eligiendo: false, calculado: false, excluidos: [],
   colectorActivo: false, colectorMonto: 0,
   extraActivo: false, extraNombre: "", extraMonto: 0,
-  orden: [], customizando: false, claveCotizacion: null,
+  orden: [], customizando: false, claveCotizacion: null, hpFicha: null,
   lineas: pedidoGuardado.lineas || [],
   // El embalaje arranca en 0 salvo que hayas dejado un pedido a medio armar:
   // ahí se restaura junto con los ítems.
@@ -101,6 +102,7 @@ function elegirProducto(pid) {
   estado.pid = pid;
   estado.eligiendo = false;
   estado.calculado = false;
+  estado.hpFicha = null;
   estado.modo = tieneCatalogo(pid) ? "modelo" : "libre";
   estado.modelo = 0;
   estado.vents = null;
@@ -451,10 +453,37 @@ function dibujarResultado(cot) {
 // La ficha sale de la misma cotización: no hay que volver a cargar nada.
 function dibujarFicha(cot) {
   const caja = $("cajaFicha");
-  const f = Ficha.filas(perfilActual(), cot);
+  const perfil = perfilActual();
+  const f = Ficha.filas(perfil, cot, PRECIOS, estado.hpFicha);
   if (!f) { caja.hidden = true; return; }
   caja.hidden = false;
-  const d = Ficha.datos(perfilActual(), cot);
+
+  // Los productos que no traen HP no pueden dar frigorías ni watts. Se ofrece
+  // cargarlo a mano: es sólo para la ficha, no cambia el precio.
+  const cajaHP = $("fichaHP");
+  if (Ficha.faltaHP(perfil, cot)) {
+    cajaHP.hidden = false; cajaHP.innerHTML = "";
+    const lab = el("label");
+    lab.appendChild(el("span", null, "Potencia del equipo (sólo para la ficha)"));
+    const sel = el("select");
+    const nada = el("option", null, "— sin definir —"); nada.value = "";
+    sel.appendChild(nada);
+    for (const hp of [0.25, 0.33, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4, 5, 6]) {
+      const o = el("option", null, `${fmtHPtexto(hp)} HP`); o.value = String(hp);
+      if (estado.hpFicha === hp) o.selected = true;
+      sel.appendChild(o);
+    }
+    sel.onchange = () => {
+      estado.hpFicha = sel.value === "" ? null : parseFloat(sel.value);
+      dibujarFicha(cot);
+    };
+    lab.appendChild(sel);
+    cajaHP.appendChild(lab);
+  } else {
+    cajaHP.hidden = true;
+  }
+
+  const d = Ficha.datos(perfil, cot, PRECIOS, estado.hpFicha);
   $("resumenFicha").textContent = d.frigorias
     ? `${d.frigorias.toLocaleString("es-AR")} frig/h · ${d.superficie.toFixed(1).replace(".", ",")} m²`
     : `${d.superficie.toFixed(1).replace(".", ",")} m² de intercambio`;
@@ -537,6 +566,11 @@ function dibujarHistorial() {
       res.appendChild(el("span", "hist-que",
         (e.cliente ? e.cliente + " — " : "") +
         (e.lineas.length === 1 ? e.lineas[0].etiqueta : `Presupuesto de ${e.lineas.length} ítems`)));
+      if (e.mlLink) {
+        const marca = el("span", "hist-ml", "ML");
+        marca.title = "Ya tiene publicación en MercadoLibre";
+        res.appendChild(marca);
+      }
       res.appendChild(el("span", "hist-monto", fmtUSD(e.usd)));
       // Copiar sin desplegar: el clic no tiene que abrir ni cerrar la entrada.
       const copiar = el("button", "hist-copiar", "Copiar");
@@ -555,6 +589,11 @@ function dibujarHistorial() {
       const cuerpo = el("div", "hist-cuerpo");
       const pre = el("pre", "hist-texto", e.texto);
       cuerpo.appendChild(pre);
+      if (e.mlLink) {
+        const a = el("a", "hist-link", e.mlLink);
+        a.href = e.mlLink; a.target = "_blank"; a.rel = "noopener";
+        cuerpo.appendChild(a);
+      }
       cuerpo.appendChild(el("p", "hist-dolar",
         `Dólar oficial de ese día: ${e.dolarOficial ? fmtARS(e.dolarOficial) : "—"}` +
         (e.columnas.includes("ml") ? ` · ML: ${e.dolarML ? fmtARS(e.dolarML) : "—"}` : "")));
@@ -574,6 +613,12 @@ function dibujarHistorial() {
         guardarPedido(); dibujarPresupuesto();
         $("presupuesto").scrollIntoView({ behavior: "smooth", block: "start" });
       });
+      if (e.mlLink) {
+        btn("Copiar link de la publicación", async () => {
+          try { await navigator.clipboard.writeText(e.mlLink); }
+          catch { prompt("Copiá el link:", e.mlLink); }
+        });
+      }
       if (e.pid && e.precioML && e.descripcionML) {
         btn("Publicar en ML", () => {
           const perfil = PERFILES[e.pid];
@@ -730,6 +775,19 @@ async function publicarEnML(cot, precioARS, entradaHist = null) {
   caja.className = "aviso ok";
   caja.appendChild(el("div", null, `Publicado: ${r.titulo}`));
   conLink(r.link);
+
+  // Queda pegado al historial, para poder recuperar el link más adelante.
+  const datosML = { mlLink: r.link, mlItemId: r.item_id, mlTitulo: r.titulo, mlPausa: r.pausa_programada || null };
+  const claveCot = entradaHist?.claveML || estado.claveCotizacion;
+  if (!H.actualizarPorClave(claveCot, datosML)) {
+    H.registrar({
+      fecha: new Date().toISOString(), tipo: "publicacion", cliente: estado.cliente || null,
+      texto: `${r.titulo}\n${r.link}`, lineas: [{ etiqueta: r.titulo, total: 0 }],
+      embalaje: 0, usd: 0, columnas: [], dolarOficial: PRECIOS.venta.dolarOficial,
+      dolarML: PRECIOS.venta.dolarML, claveML: clave, ...datosML
+    });
+  }
+  dibujarHistorial();
   if (r.pausa_programada) {
     const p = new Date(r.pausa_programada);
     caja.appendChild(el("div", "hist-dolar",
@@ -842,7 +900,7 @@ $("btnCalcular").onclick = () => {
 
 $("btnCopiarFicha").onclick = async () => {
   if (!ultima) return;
-  const texto = Ficha.texto(perfilActual(), ultima);
+  const texto = Ficha.texto(perfilActual(), ultima, PRECIOS, estado.hpFicha);
   try { await navigator.clipboard.writeText(texto); }
   catch { prompt("Copiá la ficha:", texto); return; }
   const b = $("btnCopiarFicha"), antes = b.textContent;

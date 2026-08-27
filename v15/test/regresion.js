@@ -497,6 +497,30 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
   chkOk("Ficha técnica", "Condensador sin superficie pero con frigorías",
         cond.superficie === null && cond.frigorias === 945);
 
+  // HP cargado a mano: completa la ficha de los productos que no lo tienen
+  const sinHP = cotizar(PERFILES.fd, { enchapado: true, secciones: 4, ancho: 0.5 });
+  chkOk("Ficha técnica", "El lateral doble avisa que le falta el HP", Ficha.faltaHP(PERFILES.fd, sinHP));
+  const conHP = Ficha.datos(PERFILES.fd, sinHP, PRECIOS, 0.5);
+  chk("Ficha técnica", "Con 1/2HP a mano da 945 frigorías", 945, conHP.frigorias);
+  chk("Ficha técnica", "Y 1.100 watts", 1100, conHP.watts);
+  chkOk("Ficha técnica", "La superficie no cambia por el HP",
+        conHP.superficie === Ficha.datos(PERFILES.fd, sinHP).superficie);
+  chkOk("Ficha técnica", "El título del texto incluye el HP a mano",
+        Ficha.texto(PERFILES.fd, sinHP, PRECIOS, 0.5).startsWith('*Forzador lateral doble 5/8" 1/2HP'));
+  chkOk("Ficha técnica", "Los que ya traen HP no lo piden",
+        !Ficha.faltaHP(PERFILES.cub, cotizar(PERFILES.cub, { enchapado: true, hp: 2, bateria: "5F6C", ancho: 0.9 })));
+  chkOk("Ficha técnica", "El compacto con secciones de tabla tampoco lo pide",
+        !Ficha.faltaHP(PERFILES.fc, cotizar(PERFILES.fc, { enchapado: true, secciones: 12, ancho: 0.36 })));
+  chkOk("Ficha técnica", "El compacto fuera de tabla sí lo pide",
+        Ficha.faltaHP(PERFILES.fc, cotizar(PERFILES.fc, { enchapado: true, secciones: 14, ancho: 0.36 })));
+
+  // El texto va en formato WhatsApp: negritas, no columnas con espacios
+  const t = Ficha.texto(PERFILES.cub, cotizar(PERFILES.cub, { enchapado: true, hp: 4, bateria: "6F6C", ancho: 1.5 }));
+  chkOk("Ficha técnica", "El texto usa negritas de WhatsApp", t.includes("*Potencia Sugerida:* 4 HP"), t.split("\n")[2]);
+  chkOk("Ficha técnica", "No alinea con espacios", !/ {3}/.test(t));
+  chkOk("Ficha técnica", "Ninguna línea pasa de 60 caracteres",
+        t.split("\n").every(l => l.length <= 60), String(Math.max(...t.split("\n").map(l => l.length))));
+
   // Los 15 productos: o dan ficha o la niegan, nunca a medias
   const casos = { ev:{secciones:6,ancho:0.5}, oli:{secciones:12,ancho:0.5}, resp:{secciones:9,ancho:0.6},
     fd:{secciones:4,ancho:0.5}, fs:{secciones:4,ancho:0.5}, fc:{secciones:12,ancho:0.36},
@@ -554,6 +578,17 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
   for (let i = 0; i < 250; i++) H.registrar({ fecha: new Date().toISOString(), texto: "x" + i, lineas: [], embalaje: 0, usd: 0, columnas: [] }, K);
   chkOk("Historial", "No crece sin límite: corta en 200", H.leer(K).length === 200, "quedaron " + H.leer(K).length);
   chkOk("Historial", "Al cortar se van los más viejos", H.leer(K)[0].texto === "x249");
+
+  // El link de MercadoLibre se le pega a la cotización que ya estaba registrada.
+  H.vaciar(K);
+  H.registrar({ fecha: new Date().toISOString(), texto: "x", lineas: [], embalaje: 0,
+                usd: 100, columnas: [], claveML: "cot-abc" }, K);
+  const pegado = H.actualizarPorClave("cot-abc", { mlLink: "https://x/MLA1", mlItemId: "MLA1" }, K);
+  chkOk("Historial", "El link se pega a la entrada que corresponde", pegado?.mlLink === "https://x/MLA1");
+  chkOk("Historial", "No duplica la entrada", H.leer(K).length === 1);
+  chkOk("Historial", "Con una clave que no existe no rompe ni inventa",
+        H.actualizarPorClave("cot-inexistente", { mlLink: "x" }, K) === null && H.leer(K).length === 1);
+  chkOk("Historial", "Sin clave tampoco hace nada", H.actualizarPorClave(null, { mlLink: "x" }, K) === null);
 
   H.vaciar(K);
   chkOk("Historial", "Vaciar deja la lista en cero", H.leer(K).length === 0);

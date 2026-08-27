@@ -18,6 +18,18 @@ export function registrar(entrada, llave = LLAVE) {
   return lista[0];
 }
 
+// Se usa cuando una cotización ya registrada termina publicándose en MercadoLibre:
+// se le pega el link a la entrada que corresponde, en vez de duplicarla.
+export function actualizarPorClave(clave, cambios, llave = LLAVE) {
+  if (!clave) return null;
+  const lista = leer(llave);
+  const i = lista.findIndex(e => e.claveML === clave);
+  if (i < 0) return null;
+  lista[i] = { ...lista[i], ...cambios };
+  localStorage.setItem(llave, JSON.stringify(lista));
+  return lista[i];
+}
+
 export function borrar(id, llave = LLAVE) {
   localStorage.setItem(llave, JSON.stringify(leer(llave).filter(e => e.id !== id)));
 }
