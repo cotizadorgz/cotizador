@@ -31,6 +31,15 @@ export const PRECIOS = {
     pisoTorteras: { ench3: 97, ench4: 129.33, sc3: 72, sc4: 96 }
   },
 
+  // Markup por tamaño del evaporador estático 5/8" y del respaldar (misma fórmula
+  // desde el 21/08/2026). Tramos [hastaSecciones, importe], evaluados en orden.
+  // Vive acá y no en perfiles.js para que se pueda extender desde el panel: si mañana
+  // hace falta cotizar 18 secciones se agrega el tramo, no se toca código. Arriba del
+  // último tramo el motor NO estira el importe: avisa y no cotiza.
+  // Los dos últimos tramos (27/08/2026) siguen la serie de la lista: sube $2 cada
+  // dos secciones. La lista impresa llega hasta 16; de 17 a 20 lo definió Gabriel.
+  markupEstatico: [[5, 4], [8, 6], [12, 8], [14, 10], [16, 12], [18, 14], [20, 16]],
+
   adicionales: {
     // Costados de aluminio. Es el mismo concepto en todos los productos: el importe
     // cambia según cuánto aluminio lleva cada uno. En las versiones enchapadas no se
@@ -69,7 +78,11 @@ export const PRECIOS = {
     lateralDoble:   { 2: 83,  3: 126, 4: 156, 5: 188, 6: 218, 7: 248 },
     lateralSimple:  { 2: 105, 3: 139, 4: 192, 5: 224 },
     dobleAtaque:    { 5: 188, 6: 218, 7: 248 },
-    respaldoCamara: { 4: 156, 6: 218, 7: 248, 8: 275, 9: 306, 10: 339, 12: 403, 15: 467 },
+    // El 5 no está en la lista impresa: sale de la tabla hermana (27/08/2026). El
+    // lateral doble comparte los tres valores que las dos tablas tienen —4, 6 y 7—
+    // y publica 5 → 188. Los huecos de 11, 13 y 14 siguen sin dato: no se inventan,
+    // el motor avisa y no cotiza.
+    respaldoCamara: { 4: 156, 5: 188, 6: 218, 7: 248, 8: 275, 9: 306, 10: 339, 12: 403, 15: 467 },
     carnicerasSimple: 139,   // 3 secciones simples
     carnicerasDoble:  156    // 4 secciones dobles
   },
@@ -100,9 +113,11 @@ export const PRECIOS = {
   // avisa. Es lo que impide que un error de tipeo salga como precio.
   // (c) = confirmado por Gabriel · el resto son provisorios y se pueden ampliar acá.
   rangos: {
-    ev:   { secciones: [3, 16],  ancho: [0.2, 3] },
+    ev:   { secciones: [3, 20],  ancho: [0.2, 3] },   // hasta donde llega markupEstatico
     oli:  { secciones: [4, 40],  ancho: [0.2, 3] },
-    resp: { secciones: [2, 8],   ancho: [0.2, 3] },
+    // Mismo techo que el estático (27/08/2026): es literalmente la misma fórmula,
+    // y 20 es hasta donde llega la tabla de markup. Antes cortaba en 8.
+    resp: { secciones: [2, 20],  ancho: [0.2, 3] },
     fd:   { secciones: [2, 7],   ancho: [0.3, 1.5] },   // ancho (c): nunca más de 1,50m
     fs:   { secciones: [2, 5],   ancho: [0.3, 1.5] },   // ancho (c)
     fc:   { secciones: [4, 40],  ancho: [0.2, 1.5] },   // ancho (c)
@@ -118,10 +133,12 @@ export const PRECIOS = {
 
   // Geometría de las aletas, medida sobre equipos reales (21/08/2026).
   // El área que le toca a cada caño es el paso entre agujeros por el ancho de aleta.
+  // `alto` es el alto de UNA sección, en mm — medido sobre equipos armados. Es el dato
+  // con el que se identifica una batería que ya existe: se mide y se sabe qué familia es.
   aletas: {
-    simple:   { paso: 75, ancho: 70, separacion: 10, cano: '5/8"' },
-    doble:    { paso: 60, ancho: 60, separacion: 10, cano: '5/8"' },
-    compacta: { paso: 29, ancho: 25, separacion: 8,  cano: '3/8"' }
+    simple:   { paso: 75, ancho: 70, separacion: 10, alto: 160, cano: '5/8"' },
+    doble:    { paso: 60, ancho: 60, separacion: 10, alto: 60,  cano: '5/8"' },
+    compacta: { paso: 29, ancho: 25, separacion: 8,  alto: 55,  cano: '3/8"' }
   },
   separacionEspecial: 4,     // opcional en compactos: duplica la superficie
   // Equivalencia de secciones a HP en los compactos de 3/8" — la misma que muestra

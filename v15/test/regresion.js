@@ -381,6 +381,149 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
   const d = cotizar(PERFILES.resp, { secciones: 4, ancho: 0.6 }).desglose;
   chkOk("Respaldar", "Ahora lleva curvas y markup",
         d.some(x => x.concepto === "Curvas") && d.some(x => x.concepto === "Markup por tamaño"));
+
+  // 27/08/2026: el respaldar cortaba en 8 secciones y hacían falta 9 o más.
+  // Ahora llega hasta 16, igual que el estático, que es la misma fórmula.
+  chk("Respaldar", "9 sec × 0,60m (antes no cotizaba)", 172.25,
+      cotizar(PERFILES.resp, { secciones: 9, ancho: 0.6 }).base);
+  chk("Respaldar", "12 sec × 1,00m", 371, cotizar(PERFILES.resp, { secciones: 12, ancho: 1 }).base);
+  for (const sec of [9, 10, 12, 14, 16, 18, 20]) {
+    chkOk("Respaldar", `${sec} secciones entra en el rango`,
+          cotizar(PERFILES.resp, { secciones: sec, ancho: 0.6 }).avisos.length === 0);
+  }
+  chkOk("Respaldar", "21 secciones sigue avisando",
+        cotizar(PERFILES.resp, { secciones: 21, ancho: 0.6 }).avisos.some(a => a.nivel === "error"));
+  chk("Respaldar", "16 sec da igual que el estático",
+      cotizar(PERFILES.ev, { secciones: 16, ancho: 0.8 }).base,
+      cotizar(PERFILES.resp, { secciones: 16, ancho: 0.8 }).base);
+}
+
+// ── Las tres secciones ──────────────────────────────────────────────────────
+// Pendiente #2 de la ficha: referencia para identificar un equipo ya armado.
+{
+  const R = Ficha.referenciaSecciones();
+  chk("Las tres secciones", "Son tres", 3, R.length);
+  const porId = Object.fromEntries(R.map(s => [s.id, s]));
+
+  for (const [id, alto, cm, cano] of [
+    ["simple", 160, "16 cm", '5/8"'], ["doble", 60, "6 cm", '5/8"'], ["compacta", 55, "5,5 cm", '3/8"']
+  ]) {
+    chk("Las tres secciones", `${id}: alto en mm`, alto, porId[id].alto);
+    chkOk("Las tres secciones", `${id}: se muestra ${cm}`, Ficha.altoEnCm(porId[id].alto) === cm,
+          Ficha.altoEnCm(porId[id].alto));
+    chkOk("Las tres secciones", `${id}: caño ${cano}`, porId[id].cano === cano);
+  }
+
+  // La aleta de 4 mm es sólo de los compactos.
+  chk("Las tres secciones", "La separación especial es 4 mm", 4, porId.compacta.separacionEspecial);
+  chkOk("Las tres secciones", "Simple y doble no tienen separación especial",
+        porId.simple.separacionEspecial === null && porId.doble.separacionEspecial === null);
+
+  // Los productos salen de los perfiles: tienen que coincidir con lo documentado.
+  const tiene = (id, pid) => porId[id].productos.some(t => t.startsWith(PERFILES[pid].nombre));
+  for (const pid of ["ev", "resp", "fs"]) chkOk("Las tres secciones", `${pid} es simple`, tiene("simple", pid));
+  for (const pid of ["fd", "col", "cub", "rcam", "t58", "da", "pt"]) chkOk("Las tres secciones", `${pid} es doble`, tiene("doble", pid));
+  for (const pid of ["oli", "fc", "t38", "cond"]) chkOk("Las tres secciones", `${pid} es compacta`, tiene("compacta", pid));
+
+  // Las carniceras cambian de sección según el modelo: van en las dos, con la aclaración.
+  chkOk("Las tres secciones", "Carniceras simples aclara el modelo",
+        porId.simple.productos.some(t => /carniceras \(3 secciones simples\)/i.test(t)),
+        porId.simple.productos.join(" · "));
+  chkOk("Las tres secciones", "Carniceras dobles aclara el modelo",
+        porId.doble.productos.some(t => /carniceras \(4 secciones dobles\)/i.test(t)),
+        porId.doble.productos.join(" · "));
+
+  // Ningún producto con aleta puede quedar afuera de la tarjeta.
+  const dentro = new Set(R.flatMap(s => s.productos.map(t => t.replace(/ \(.*\)$/, ""))));
+  for (const pid of ORDEN) {
+    if (!PERFILES[pid].aleta) continue;
+    chkOk("Las tres secciones", `${pid} figura en alguna sección`, dentro.has(PERFILES[pid].nombre));
+  }
+
+  // Sale de los perfiles, no de una lista a mano: si cambia la aleta, cambia la tarjeta.
+  const inventado = { xx: { id: "xx", nombre: "Producto nuevo", aleta: "doble" } };
+  chkOk("Las tres secciones", "Un producto nuevo aparece solo",
+        Ficha.referenciaSecciones(PRECIOS, inventado, ["xx"])
+          .find(s => s.id === "doble").productos.includes("Producto nuevo"));
+}
+
+// ── Huecos del respaldo de cámara ───────────────────────────────────────────
+// Pendiente #6. El de 5 secciones dobles salió de la tabla hermana: el lateral doble
+// comparte con respaldo de cámara los tres valores que las dos tablas tienen y publica
+// 5 → 188. Los de 11, 13 y 14 no tienen dato: se avisa, no se inventan.
+{
+  const pm = PRECIOS.precioMetro;
+  for (const sec of [4, 6, 7]) {
+    chk("Huecos rcam", `${sec} dobles vale igual en las dos tablas`,
+        pm.lateralDoble[sec], pm.respaldoCamara[sec]);
+  }
+  chk("Huecos rcam", "El 5 se toma del lateral doble", pm.lateralDoble[5], pm.respaldoCamara[5]);
+  chk("Huecos rcam", "5 dobles = $188 por metro", 188, pm.respaldoCamara[5]);
+
+  // 188 × 0,85 + 2×v250 (75) + col/dist 3/4HP (0)
+  const c = cotizar(PERFILES.rcam, { enchapado: true, hp: 0.75, secDobles: 5, ancho: 0.85 });
+  chk("Huecos rcam", "5 dobles × 0,85m cotiza", 234.80, c.base);
+  chkOk("Huecos rcam", "5 dobles ya no avisa", c.avisos.length === 0);
+
+  // Los tres que siguen sin dato tienen que seguir frenando la cotización.
+  for (const sec of [11, 13, 14]) {
+    const f = cotizar(PERFILES.rcam, { enchapado: true, hp: 2, secDobles: sec, ancho: 1.2 });
+    chkOk("Huecos rcam", `${sec} dobles avisa que no hay precio publicado`,
+          f.avisos.some(a => a.nivel === "error" && /no hay precio publicado/.test(a.msg)));
+  }
+  // Sin enchapar no hay tabla: se cotiza por sección doble, así que los huecos no existen.
+  chk("Huecos rcam", "11 dobles sin enchapar cotiza igual", 356.80,
+      cotizar(PERFILES.rcam, { enchapado: false, hp: 2, secDobles: 11, ancho: 1.2 }).base);
+}
+
+// ── Markup por tamaño: tabla del panel, sin estirar el último tramo ──────────
+// Pendiente #3: arriba de 16 secciones el markup se estancaba en $12 sin avisar.
+{
+  chkOk("Markup por tamaño", "La tabla vive en el panel, no en el código",
+        Array.isArray(PRECIOS.markupEstatico) && PRECIOS.markupEstatico.length === 7);
+  const tope = PRECIOS.markupEstatico[PRECIOS.markupEstatico.length - 1];
+  chk("Markup por tamaño", "El último tramo es 20 sec = $16", 20, tope[0]);
+  chk("Markup por tamaño", "Importe del último tramo", 16, tope[1]);
+
+  // Los tramos suben de a $2 y no se saltean: la serie no puede quedar rota.
+  PRECIOS.markupEstatico.forEach(([, imp], i) => {
+    if (i) chk("Markup por tamaño", `El tramo ${i + 1} sube $2`, 2, imp - PRECIOS.markupEstatico[i - 1][1]);
+  });
+
+  for (const [sec, esperado] of [[3, 4], [5, 4], [6, 6], [8, 6], [9, 8], [12, 8], [13, 10], [14, 10], [15, 12], [16, 12], [17, 14], [18, 14], [19, 16], [20, 16]]) {
+    const m = cotizar(PERFILES.ev, { secciones: sec, ancho: 0.5 }).desglose
+      .find(x => x.concepto === "Markup por tamaño");
+    chk("Markup por tamaño", `${sec} sec`, esperado, m.importe);
+  }
+
+  // Arriba del tope no se estira el importe: avisa, igual que cualquier otra tabla.
+  for (const perfil of ["ev", "resp"]) {
+    const c = cotizar(PERFILES[perfil], { secciones: 22, ancho: 0.5 });
+    chkOk("Markup por tamaño", `${perfil}: 22 sec avisa que falta el tramo`,
+          c.avisos.some(a => a.nivel === "error" && /Markup por tamaño/.test(a.msg)));
+    chkOk("Markup por tamaño", `${perfil}: 20 sec cotiza sin avisos`,
+          cotizar(PERFILES[perfil], { secciones: 20, ancho: 0.5 }).avisos.length === 0);
+  }
+
+  // La explicación se arma sola desde la tabla: no puede quedar desactualizada.
+  const nota = cotizar(PERFILES.ev, { secciones: 6, ancho: 0.5 }).desglose
+    .find(x => x.concepto === "Markup por tamaño").nota;
+  chkOk("Markup por tamaño", "La explicación sale de la tabla",
+        nota.includes("hasta 5 sec = $4") && nota.includes("19 a 20 sec = $16"), nota);
+
+  // Editarlo desde el panel tiene que cambiar el precio Y la explicación.
+  const original = PRECIOS.markupEstatico;
+  PRECIOS.markupEstatico = [...original, [24, 18]];
+  const c24 = cotizar(PERFILES.ev, { secciones: 22, ancho: 1 });
+  const m24 = c24.desglose.find(x => x.concepto === "Markup por tamaño");
+  chk("Markup por tamaño", "Con el tramo nuevo, 22 sec cobra $18", 18, m24.importe);
+  chkOk("Markup por tamaño", "Con el tramo nuevo ya no avisa por el markup",
+        !c24.avisos.some(a => /Markup por tamaño/.test(a.msg)));
+  chkOk("Markup por tamaño", "La explicación toma el tramo nuevo", m24.nota.includes("21 a 24 sec = $18"), m24.nota);
+  PRECIOS.markupEstatico = original;
+  chk("Markup por tamaño", "La tabla vuelve a su lugar", 16,
+      cotizar(PERFILES.ev, { secciones: 20, ancho: 0.5 }).desglose
+        .find(x => x.concepto === "Markup por tamaño").importe);
 }
 
 // ── MercadoLibre ─────────────────────────────────────────────────────────────
@@ -389,7 +532,7 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
 {
   // Peor caso de cada producto: las medidas más grandes que acepta cada rango.
   const peor = {
-    ev:{secciones:16,ancho:3}, oli:{secciones:40,ancho:3}, resp:{secciones:16,ancho:3},
+    ev:{secciones:20,ancho:3}, oli:{secciones:40,ancho:3}, resp:{secciones:20,ancho:3},
     fd:{secciones:7,ancho:1.5}, fs:{secciones:5,ancho:1.5}, fc:{secciones:40,ancho:1.5},
     col:{secDobles:20,ancho:9,uniones:0}, cub:{hp:2.5,bateria:"5F6C",ancho:3},
     rcam:{hp:1.5,secDobles:15,ancho:3}, t58:{hp:0.75,secciones:20,ancho:1,bandeja:1000},

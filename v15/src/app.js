@@ -9,7 +9,7 @@ import * as Ficha from "./ficha.js";
 
 // Se sube a mano en cada publicación. Sirve para confirmar de un vistazo que el
 // navegador cargó la versión nueva y no una copia guardada.
-export const VERSION = "16.6";
+export const VERSION = "16.7";
 
 const $ = id => document.getElementById(id);
 const fmtHPtexto = h => ({ 0.25: "1/4", 0.33: "1/3", 0.5: "1/2", 0.75: "3/4" })[h] || String(h).replace(".", ",");
@@ -529,6 +529,32 @@ function dibujarPrecios(cot) {
   $("btnCopiar").disabled = estado.filas.size === 0 || cot.avisos.some(a => a.nivel === "error");
 }
 
+// ── Las tres secciones ───────────────────────────────────────────────────────
+// No depende de ninguna cotización: es una referencia para identificar un equipo que
+// ya existe. Se dibuja una sola vez al arrancar y se rehace si se tocan los precios,
+// porque el alto y la separación de aletas son campos del panel.
+function dibujarSecciones() {
+  const cont = $("seccionesCuerpo"); cont.innerHTML = "";
+  const secciones = Ficha.referenciaSecciones();
+  $("resumenSecciones").textContent =
+    secciones.map(s => `${s.nombre.split(" ")[0].toLowerCase()} ${Ficha.altoEnCm(s.alto)}`).join(" · ");
+
+  for (const s of secciones) {
+    const caja = el("div", "secc");
+    const tit = el("div", "secc-tit");
+    tit.appendChild(el("span", null, `Sección ${s.nombre}`));
+    tit.appendChild(el("strong", null, Ficha.altoEnCm(s.alto)));
+    caja.appendChild(tit);
+
+    const separacion = `aletas cada ${s.separacion} mm` +
+      (s.separacionEspecial ? ` (o ${s.separacionEspecial} mm en las especiales)` : "");
+    caja.appendChild(el("div", "secc-datos",
+      `Caño ${s.cano} · aleta ${s.paso} × ${s.ancho} mm · ${separacion}`));
+    caja.appendChild(el("div", "secc-prods", s.productos.join(" · ")));
+    cont.appendChild(caja);
+  }
+}
+
 // ── Historial ────────────────────────────────────────────────────────────────
 function registrarEnHistorial(tipo, lineas, embalaje, texto) {
   H.registrar({
@@ -953,7 +979,7 @@ $("btnPanel").onclick = () => {
   panel.hidden = !panel.hidden;
   $("btnPanel").setAttribute("aria-pressed", String(!panel.hidden));
   if (!panel.hidden) {
-    dibujarPanel($("panelCuerpo"), recalcular);
+    dibujarPanel($("panelCuerpo"), () => { recalcular(); dibujarSecciones(); });
     panel.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 };
@@ -969,6 +995,7 @@ $("dolarML").value = PRECIOS.venta.dolarML ?? "";
 $("embalaje").value = estado.embalaje;
 $("cliente").value = estado.cliente;
 dibujarHistorial();
+dibujarSecciones();
 $("dolarMLEstado").textContent = guardado.mlFecha ? `editado el ${fechaCorta(guardado.mlFecha)}` : "valor inicial";
 render();
 traerDolarOficial();

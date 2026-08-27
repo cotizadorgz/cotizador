@@ -378,3 +378,19 @@ footer { padding: 18px; text-align: center; }
 }
 .hist-dolar { margin: 8px 0 0; font-size: 11px; color: var(--texto3); }
 .hist-cuerpo .panel-acciones { margin-bottom: 0; }
+
+/* ── Las tres secciones ─────────────────────────────────────────────────────
+   Referencia para identificar un equipo ya armado. No es una tabla: en el celular
+   cinco columnas quedan ilegibles, así que va un bloque por sección. */
+.secc-adentro { padding: 12px; }
+.secc {
+  padding: 10px 0; border-top: 1px solid var(--borde);
+}
+.secc:first-of-type { border-top: 0; padding-top: 2px; }
+.secc-tit {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  font-size: 14px; font-weight: 700; color: var(--texto);
+}
+.secc-tit strong { font-variant-numeric: tabular-nums; color: var(--royal); white-space: nowrap; }
+.secc-datos { margin-top: 3px; font-size: 12px; color: var(--texto2); }
+.secc-prods { margin-top: 5px; font-size: 12px; line-height: 1.5; color: var(--texto3); }

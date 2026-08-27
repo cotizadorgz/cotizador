@@ -29,8 +29,21 @@ const GRUPOS = {
   ajustes: "Ajustes nombrados",
   rangos: "Rangos válidos",
   bajaTemperatura: "Baja temperatura",
+  markupEstatico: "Markup por tamaño — estático y respaldar",
+  aletas: "Geometría de las aletas",
+  separacionEspecial: "Separación especial de los compactos (mm)",
+  hpCompacto: "Secciones a HP en los compactos",
+  frigoriasPorHP: "Frigorías por HP",
+  wattPorFrigoria: "Watts por frigoría",
   venta: "Venta"
 };
+
+// Los tramos de col/dist se cortan por HP, pero los del markup del estático y los
+// costados del lateral doble se cortan por SECCIONES: rotularlos "hasta 5HP" hacía
+// leer mal la tabla.
+const TRAMOS_POR_SECCION = ["markupEstatico", "fd"];
+const topeTramo = (ruta, n) =>
+  TRAMOS_POR_SECCION.includes(ruta[ruta.length - 1]) ? `${n} sec` : `${fmtHP(n)}HP`;
 
 // ── Recorrido del árbol ──────────────────────────────────────────────────────
 const esTramos = v => Array.isArray(v) && v.length > 0 &&
@@ -200,9 +213,12 @@ export function dibujarPanel(cont, alCambiar) {
     const campos = el("div", "campos");
     for (const hoja of lista) {
       if (hoja.tipo === "tramos") {
+        // Una tabla de tramos que cuelga de la raíz no tiene nombre propio que mostrar:
+        // el título del grupo ya lo dice.
+        const nombre = bonito(hoja.ruta);
         for (let i = 0; i < hoja.valor.length; i++) {
           campos.appendChild(campoNumero([...hoja.ruta, String(i), "1"],
-            `${bonito(hoja.ruta)} · hasta ${fmtHP(hoja.valor[i][0])}HP`, hoja.valor[i][1]));
+            `${nombre ? nombre + " · " : ""}hasta ${topeTramo(hoja.ruta, hoja.valor[i][0])}`, hoja.valor[i][1]));
         }
       } else {
         campos.appendChild(campoNumero(hoja.ruta, bonito(hoja.ruta) || hoja.ruta, hoja.valor));

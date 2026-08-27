@@ -6,6 +6,7 @@
 //   superficie = caños × (paso × ancho de aleta) × (largo ÷ separación) × 2 caras
 
 import { PRECIOS } from "./precios.js";
+import { PERFILES, ORDEN } from "./perfiles.js";
 import { fmtHP } from "./motor.js";
 
 const num = n => n.toLocaleString("es-AR");
@@ -91,3 +92,49 @@ export function texto(perfil, cot, P = PRECIOS, hpManual = null) {
   // no sirve: WhatsApp no usa monoespaciada y las columnas quedarían corridas.
   return [`*${titulo}*`, "", ...f.map(([k, v]) => `*${k}:* ${v}`)].join("\n");
 }
+
+// ── Referencia de las tres secciones ─────────────────────────────────────────
+// No sale de la cotización: es para identificar un equipo que ya existe. Se mide el
+// alto de una sección y de ahí sale de qué familia es, con qué caño y qué separación
+// de aletas. Los productos de cada sección salen de los perfiles, no de una lista
+// escrita a mano: si mañana cambia la aleta de un producto, la tarjeta lo dice sola.
+const NOMBRE_SECCION = { simple: "Simple", doble: "Doble", compacta: "Compacta" };
+
+// Un producto puede cambiar de sección según el modelo —las carniceras son 3 simples
+// o 4 dobles—. Se prueban los valores de sus selectores y se lo cuenta en cada sección
+// que le toque, aclarando con cuál modelo.
+function variantesAleta(perfil) {
+  if (typeof perfil.aleta !== "function") return [[perfil.aleta, null]];
+  const salida = [];
+  for (const campo of perfil.campos || []) {
+    if (campo.tipo !== "select") continue;
+    for (const [valor, etiqueta] of campo.opciones) {
+      const tipo = perfil.aleta({ [campo.id]: valor });
+      if (tipo && !salida.some(([t]) => t === tipo)) salida.push([tipo, etiqueta]);
+    }
+  }
+  return salida;
+}
+
+export function referenciaSecciones(P = PRECIOS, perfiles = PERFILES, orden = ORDEN) {
+  const salida = Object.entries(P.aletas).map(([id, a]) => ({
+    id, nombre: `${NOMBRE_SECCION[id] || id} ${a.cano}`,
+    alto: a.alto, cano: a.cano, paso: a.paso, ancho: a.ancho, separacion: a.separacion,
+    // La aleta de 4 mm es sólo de los compactos: es la misma casilla que duplica
+    // la superficie en la ficha.
+    separacionEspecial: id === "compacta" ? P.separacionEspecial : null,
+    productos: []
+  }));
+  for (const pid of orden) {
+    const perfil = perfiles[pid];
+    if (!perfil?.aleta) continue;
+    for (const [tipo, cual] of variantesAleta(perfil)) {
+      const s = salida.find(x => x.id === tipo);
+      if (s) s.productos.push(cual ? `${perfil.nombre} (${cual})` : perfil.nombre);
+    }
+  }
+  return salida;
+}
+
+// "160" → "16 cm" · "55" → "5,5 cm". El alto se guarda en mm porque así se mide.
+export const altoEnCm = mm => `${dec(mm / 10, 1).replace(/,0$/, "")} cm`;

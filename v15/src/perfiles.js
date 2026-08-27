@@ -18,7 +18,22 @@ const listaTabla = (obj, pre = "", pos = "") =>
 const usd = n => `$${String(n).replace(".", ",")}`;
 
 // Markup por tamaño, compartido por el evaporador estático y el respaldar.
-const MARKUP_ESTATICO = [[5, 4], [8, 6], [12, 8], [14, 10], [16, 12]];
+// La tabla vive en el panel (PRECIOS.markupEstatico): la explicación se arma sola,
+// así que si se agrega un tramo el desglose lo dice al instante.
+const notaMarkup = tabla => tabla
+  .map(([hasta, imp], i) => `${i ? `${tabla[i - 1][0] + 1} a ${hasta}` : `hasta ${hasta}`} sec = ${usd(imp)}`)
+  .join(" · ");
+
+// Arriba del último tramo NO se estira el importe: avisa y no cotiza. Es el mismo
+// criterio que el resto de las tablas (bug #6 de la v14: fallbacks que inventan precios).
+const markupPorTamano = (e, P, av) => {
+  const tabla = P.markupEstatico;
+  const tope = tabla[tabla.length - 1][0];
+  if (e.secciones > tope) {
+    av.push({ nivel: "error", msg: `Markup por tamaño: la tabla llega hasta ${tope} secciones y acá hay ${e.secciones}. Agregá el tramo en el panel antes de cotizar.` });
+  }
+  return { concepto: "Markup por tamaño", importe: tramo(tabla, e.secciones), nota: notaMarkup(tabla) };
+};
 
 const medidaSec = e => `${e.secciones} sec x ${fmtM(e.ancho)}m`;
 const medidaDobles = e => `${e.secDobles} sec x ${fmtM(e.ancho)}m`;
@@ -50,10 +65,9 @@ export const PERFILES = {
     ventDefault: sinVent,
     bateria: (e, P) => ({ concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m`, importe: e.secciones * e.ancho * P.tarifas.seccionSimple58,
       nota: `${usd(P.tarifas.seccionSimple58)} por sección por metro de ancho` }),
-    adicionales: (e, P) => [
+    adicionales: (e, P, av) => [
       { concepto: "Curvas", importe: e.secciones * P.adicionales.curvasPorSeccion, nota: `${usd(P.adicionales.curvasPorSeccion)} por sección · acá ${e.secciones}` },
-      { concepto: "Markup por tamaño", importe: tramo(MARKUP_ESTATICO, e.secciones),
-        nota: "3 a 5 sec = $4 · 6 a 8 = $6 · 9 a 12 = $8 · 13 a 14 = $10 · 15 a 16 = $12" }
+      markupPorTamano(e, P, av)
     ],
     ajustePost: base => redondeo075(base)
   },
@@ -83,10 +97,9 @@ export const PERFILES = {
     // sec × 30 × ancho × 1,04, sin curvas ni markup.
     bateria: (e, P) => ({ concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m`, importe: e.secciones * e.ancho * P.tarifas.seccionSimple58,
       nota: `${usd(P.tarifas.seccionSimple58)} por sección por metro de ancho` }),
-    adicionales: (e, P) => [
+    adicionales: (e, P, av) => [
       { concepto: "Curvas", importe: e.secciones * P.adicionales.curvasPorSeccion, nota: `${usd(P.adicionales.curvasPorSeccion)} por sección · acá ${e.secciones}` },
-      { concepto: "Markup por tamaño", importe: tramo(MARKUP_ESTATICO, e.secciones),
-        nota: "3 a 5 sec = $4 · 6 a 8 = $6 · 9 a 12 = $8 · 13 a 14 = $10 · 15 a 16 = $12" }
+      markupPorTamano(e, P, av)
     ]
   },
 
