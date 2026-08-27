@@ -9,7 +9,7 @@ import * as Ficha from "./ficha.js";
 
 // Se sube a mano en cada publicación. Sirve para confirmar de un vistazo que el
 // navegador cargó la versión nueva y no una copia guardada.
-export const VERSION = "16.5";
+export const VERSION = "16.6";
 
 const $ = id => document.getElementById(id);
 const fmtHPtexto = h => ({ 0.25: "1/4", 0.33: "1/3", 0.5: "1/2", 0.75: "3/4" })[h] || String(h).replace(".", ",");
@@ -717,7 +717,7 @@ async function publicarEnML(cot, precioARS, entradaHist = null) {
   const perfil = entradaHist ? PERFILES[entradaHist.pid] : perfilActual();
   const pid = perfil.id;
   const vence = ML.vencimiento();
-  const titulo = ML.tituloML(pid, estado.cliente);
+  const titulo = ML.tituloML(pid, cot.entrada, perfil);
   const descripcion = entradaHist?.descripcionML || ML.descripcionML(perfil, cot, vence);
   const precio = Math.round(precioARS);
 

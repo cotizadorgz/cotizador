@@ -21,34 +21,55 @@ export const leerClave = () => localStorage.getItem(LLAVE_CLAVE) || "";
 export const guardarClave = c => localStorage.setItem(LLAVE_CLAVE, c.trim());
 export const borrarClave = () => localStorage.removeItem(LLAVE_CLAVE);
 
-// Nombre genérico por producto. ML igual lo reescribe a Tipo Título.
+// Título al estilo de las publicaciones que ML nunca moderó en esta cuenta:
+// empieza por el producto, después las especificaciones, y "A Medida" al final.
+// Nunca arranca con un modificador — eso fue lo que hizo pausar una publicación.
+// Cada producto tiene nombre largo y corto: si no entra en 60, se acorta la
+// aplicación ("Para Cámara Frigorífica" → "Para Cámara"), como hacen las existentes.
 export const FAMILIA = {
-  ev:   "EVAPORADOR ESTÁTICO",
-  oli:  "EVAPORADOR ESTÁTICO COMPACTO",
-  resp: "RESPALDAR ESTÁTICO",
-  fd:   "FORZADOR LATERAL",
-  fs:   "FORZADOR LATERAL",
-  fc:   "FORZADOR LATERAL COMPACTO",
-  col:  "COLUMNA PARA BATEA",
-  cub:  "FORZADOR CÚBICO",
-  rcam: "FORZADOR DE RESPALDO",
-  t58:  "FORZADOR DE TECHO",
-  t38:  "FORZADOR DE TECHO",
-  car:  "RESPALDO PARA CARNICERAS",
-  da:   "FORZADOR DOBLE ATAQUE",
-  pt:   "FORZADOR DE PISO",
-  cond: "CONDENSADOR"
+  ev:   ["Evaporador Estático Para Refrigeración", "Evaporador Estático"],
+  oli:  ["Evaporador Estático Compacto", "Evaporador Compacto"],
+  resp: ["Evaporador Respaldar Estático", "Evaporador Respaldar"],
+  fd:   ["Evaporador Forzado Lateral Doble", "Evaporador Lateral Doble"],
+  fs:   ["Evaporador Forzado Lateral Simple", "Evaporador Lateral Simple"],
+  fc:   ["Evaporador Forzado Lateral Compacto", "Evaporador Lateral Compacto"],
+  col:  ["Evaporador Columna Para Batea", "Evaporador Columna Batea"],
+  cub:  ["Evaporador Forzado Cúbico Para Cámara Frigorífica", "Evaporador Forzado Cúbico"],
+  rcam: ["Evaporador Forzado Respaldo Para Cámara", "Evaporador Respaldo Cámara"],
+  t58:  ["Evaporador Forzado De Techo Para Cámara", "Evaporador Forzado De Techo"],
+  t38:  ["Evaporador Forzado De Techo Compacto", "Evaporador De Techo Compacto"],
+  car:  ["Evaporador Respaldo Para Carnicera", "Evaporador Respaldo Carnicera"],
+  da:   ["Evaporador Forzado Doble Ataque", "Evaporador Doble Ataque"],
+  pt:   ["Evaporador Forzado De Piso Para Torteras", "Evaporador De Piso Torteras"],
+  cond: ["Condensador Para Refrigeración", "Condensador"]
 };
 
-// "A MEDIDA - FORZADOR LATERAL - JUAN X". El nombre del producto queda siempre
-// entero; el del cliente se recorta a lo que entre. Nunca se pasa de 60.
-export function tituloML(pid, cliente = "") {
-  const base = `A MEDIDA - ${FAMILIA[pid] || "EQUIPO"}`;
-  const nombre = (cliente || "").trim().toUpperCase();
-  if (!nombre) return base;
-  const libre = ML.maxTitulo - base.length - 3;      // 3 = " - "
-  if (libre < 4) return base;                        // no entra nada útil
-  return `${base} - ${nombre.length > libre ? nombre.slice(0, libre - 1).trimEnd() + "…" : nombre}`;
+const hpTexto = hp => `${fmtHP(hp)} Hp`;
+// Las carniceras no guardan las secciones como campo: las declara el perfil.
+const medidaTexto = (perfil, e) => {
+  const sec = e.secDobles ?? e.secciones ?? (perfil?.seccionesFicha ? perfil.seccionesFicha(e) : null);
+  if (!sec || !e.ancho) return null;
+  return `${sec}x${e.ancho.toFixed(2).replace(".", ",")} Mtrs`;
+};
+
+// Especificación que identifica al equipo: el HP si lo tiene, si no la medida.
+export function especificacion(perfil, e) {
+  if (e.hp) return hpTexto(e.hp);
+  return medidaTexto(perfil, e);
+}
+
+// Arma el título y lo va acortando hasta que entre en 60: primero el nombre corto,
+// después saca "A Medida", y por último la especificación.
+export function tituloML(pid, entrada = {}, perfil = null) {
+  const [largo, corto] = FAMILIA[pid] || ["Evaporador", "Evaporador"];
+  const espec = perfil ? especificacion(perfil, entrada) : null;
+  const armar = (nombre, conEspec, conMedida) =>
+    [nombre, conEspec && espec ? espec : null, conMedida ? "A Medida" : null].filter(Boolean).join(" ");
+  for (const t of [armar(largo, true, true), armar(corto, true, true),
+                   armar(corto, true, false), armar(corto, false, true), corto]) {
+    if (t.length <= ML.maxTitulo) return t;
+  }
+  return corto.slice(0, ML.maxTitulo);
 }
 
 export const vencimiento = (horas = ML.horasPausa) => new Date(Date.now() + horas * 3600e3);

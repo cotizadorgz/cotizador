@@ -387,20 +387,40 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
 // Sólo lo que se arma del lado nuestro. No se llama al endpoint: publicar crea una
 // publicación de verdad en la cuenta y eso no se hace desde una suite de tests.
 {
-  const largo = "Carnicería El Sol de Moreno y Alrededores SRL";
-  let peor = 0;
+  // Peor caso de cada producto: las medidas más grandes que acepta cada rango.
+  const peor = {
+    ev:{secciones:16,ancho:3}, oli:{secciones:40,ancho:3}, resp:{secciones:16,ancho:3},
+    fd:{secciones:7,ancho:1.5}, fs:{secciones:5,ancho:1.5}, fc:{secciones:40,ancho:1.5},
+    col:{secDobles:20,ancho:9,uniones:0}, cub:{hp:2.5,bateria:"5F6C",ancho:3},
+    rcam:{hp:1.5,secDobles:15,ancho:3}, t58:{hp:0.75,secciones:20,ancho:1,bandeja:1000},
+    t38:{hp:0.33,secciones:60,ancho:1,bandeja:800}, car:{dobles:true,ancho:3,cantVent:4},
+    da:{secciones:7,ancho:0.8}, pt:{hp:0.75,secciones:4,ancho:2.5}, cond:{hp:0.25}
+  };
+  let mayor = 0;
   for (const pid of ORDEN) {
-    for (const cli of ["", "Juan X", largo]) {
-      const t = ML.tituloML(pid, cli);
-      peor = Math.max(peor, t.length);
-      chkOk("MercadoLibre", `${pid} entra en 60 (cliente "${cli.slice(0,10)}")`, t.length <= 60, `${t.length}: ${t}`);
-    }
+    const c = cotizar(PERFILES[pid], { enchapado: true, ...peor[pid] });
+    const t = ML.tituloML(pid, c.entrada, PERFILES[pid]);
+    mayor = Math.max(mayor, t.length);
+    chkOk("MercadoLibre", `${pid} entra en 60`, t.length <= ML.ML.maxTitulo, `${t.length}: ${t}`);
+    // ML pausó una publicación por empezar con el modificador: nunca más.
+    chkOk("MercadoLibre", `${pid} arranca por el producto`, /^(Evaporador|Condensador)/.test(t), t);
+    chkOk("MercadoLibre", `${pid} no arranca con "A Medida"`, !/^A Medida/i.test(t), t);
   }
-  chkOk("MercadoLibre", `Ningún título llega a pasarse (peor caso ${peor})`, peor <= 60);
-  chkOk("MercadoLibre", "Sin cliente queda el nombre solo", ML.tituloML("fd") === "A MEDIDA - FORZADOR LATERAL");
-  chkOk("MercadoLibre", "Con cliente lo agrega al final", ML.tituloML("fd", "Juan X") === "A MEDIDA - FORZADOR LATERAL - JUAN X");
-  chkOk("MercadoLibre", "El nombre del producto nunca se recorta",
-        ML.tituloML("oli", largo).startsWith("A MEDIDA - EVAPORADOR ESTÁTICO COMPACTO"));
+  chkOk("MercadoLibre", `Peor título de todos: ${mayor} caracteres`, mayor <= 60);
+
+  // La especificación identifica el equipo: HP si lo tiene, medida si no.
+  const cub = cotizar(PERFILES.cub, { enchapado: true, hp: 4, bateria: "6F6C", ancho: 1.5 });
+  chkOk("MercadoLibre", "Con HP lo usa en el título",
+        ML.tituloML("cub", cub.entrada, PERFILES.cub) === "Evaporador Forzado Cúbico 4 Hp A Medida",
+        ML.tituloML("cub", cub.entrada, PERFILES.cub));
+  const col = cotizar(PERFILES.col, { secDobles: 4, ancho: 1.7, uniones: 0 });
+  chkOk("MercadoLibre", "Sin HP usa la medida",
+        ML.tituloML("col", col.entrada, PERFILES.col) === "Evaporador Columna Para Batea 4x1,70 Mtrs A Medida",
+        ML.tituloML("col", col.entrada, PERFILES.col));
+  const car = cotizar(PERFILES.car, { dobles: true, ancho: 2.2, cantVent: 4 });
+  chkOk("MercadoLibre", "Carniceras saca las secciones del perfil",
+        ML.tituloML("car", car.entrada, PERFILES.car).includes("4x2,20 Mtrs"),
+        ML.tituloML("car", car.entrada, PERFILES.car));
 
   // Validaciones antes de mandar
   chkOk("MercadoLibre", "Frena un título largo", ML.revisar({ titulo: "x".repeat(61), precio: 200000 }).length === 1);
@@ -409,7 +429,7 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
   chkOk("MercadoLibre", "Deja pasar lo válido", ML.revisar({ titulo: "ok", precio: 200000 }).length === 0);
   chkOk("MercadoLibre", "Frena si no hay precio", ML.revisar({ titulo: "ok", precio: 0 }).length === 1);
 
-  // La descripción lleva lo que el título ya no puede llevar
+  // La descripción lleva el detalle que el título no puede llevar
   const c = cotizar(PERFILES.fd, { enchapado: false, secciones: 7, ancho: 0.55,
     colector: 45.50, excluidos: ["Costados de aluminio"] });
   const d = ML.descripcionML(PERFILES.fd, c, new Date("2026-08-27T20:46:00-03:00"));
