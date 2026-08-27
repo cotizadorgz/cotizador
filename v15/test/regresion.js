@@ -4,6 +4,7 @@ import { PRECIOS } from "../src/precios.js";
 import * as L from "../src/lista-publicada.js";
 import { MODELOS } from "../src/modelos.js";
 import * as H from "../src/historial.js";
+import * as ML from "../src/mercadolibre.js";
 import { leerNumero } from "../src/motor.js";
 
 const res = { ok: 0, fail: 0, casos: [], grupos: {} };
@@ -379,6 +380,76 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
   const d = cotizar(PERFILES.resp, { secciones: 4, ancho: 0.6 }).desglose;
   chkOk("Respaldar", "Ahora lleva curvas y markup",
         d.some(x => x.concepto === "Curvas") && d.some(x => x.concepto === "Markup por tamaño"));
+}
+
+// ── MercadoLibre ─────────────────────────────────────────────────────────────
+// Sólo lo que se arma del lado nuestro. No se llama al endpoint: publicar crea una
+// publicación de verdad en la cuenta y eso no se hace desde una suite de tests.
+{
+  const largo = "Carnicería El Sol de Moreno y Alrededores SRL";
+  let peor = 0;
+  for (const pid of ORDEN) {
+    for (const cli of ["", "Juan X", largo]) {
+      const t = ML.tituloML(pid, cli);
+      peor = Math.max(peor, t.length);
+      chkOk("MercadoLibre", `${pid} entra en 60 (cliente "${cli.slice(0,10)}")`, t.length <= 60, `${t.length}: ${t}`);
+    }
+  }
+  chkOk("MercadoLibre", `Ningún título llega a pasarse (peor caso ${peor})`, peor <= 60);
+  chkOk("MercadoLibre", "Sin cliente queda el nombre solo", ML.tituloML("fd") === "A MEDIDA - FORZADOR LATERAL");
+  chkOk("MercadoLibre", "Con cliente lo agrega al final", ML.tituloML("fd", "Juan X") === "A MEDIDA - FORZADOR LATERAL - JUAN X");
+  chkOk("MercadoLibre", "El nombre del producto nunca se recorta",
+        ML.tituloML("oli", largo).startsWith("A MEDIDA - EVAPORADOR ESTÁTICO COMPACTO"));
+
+  // Validaciones antes de mandar
+  chkOk("MercadoLibre", "Frena un título largo", ML.revisar({ titulo: "x".repeat(61), precio: 200000 }).length === 1);
+  chkOk("MercadoLibre", "Frena un precio bajo", ML.revisar({ titulo: "ok", precio: 49999 }).length === 1);
+  chkOk("MercadoLibre", "Frena un precio alto", ML.revisar({ titulo: "ok", precio: 5000001 }).length === 1);
+  chkOk("MercadoLibre", "Deja pasar lo válido", ML.revisar({ titulo: "ok", precio: 200000 }).length === 0);
+  chkOk("MercadoLibre", "Frena si no hay precio", ML.revisar({ titulo: "ok", precio: 0 }).length === 1);
+
+  // La descripción lleva lo que el título ya no puede llevar
+  const c = cotizar(PERFILES.fd, { enchapado: false, secciones: 7, ancho: 0.55,
+    colector: 45.50, excluidos: ["Costados de aluminio"] });
+  const d = ML.descripcionML(PERFILES.fd, c, new Date("2026-08-27T20:46:00-03:00"));
+  chkOk("MercadoLibre", "La descripción trae el producto y la medida",
+        d.includes("Forzador lateral doble") && d.includes("7 secciones x 0,55m"), d.split("\n")[1]);
+  chkOk("MercadoLibre", "Trae las aclaraciones", d.includes("Sin enchapar") && d.includes("colector"));
+  chkOk("MercadoLibre", "Avisa lo que no incluye", d.includes("No incluye costados de aluminio"));
+  chkOk("MercadoLibre", "Trae el plazo de fabricación", d.includes("2 a 3 días"));
+  chkOk("MercadoLibre", "Trae el vencimiento", d.includes("27/08/2026") && d.includes("20:46"));
+}
+
+// ── Respuestas del bot ───────────────────────────────────────────────────────
+// Con fetch simulado: nunca se toca el servidor real desde los tests.
+{
+  const fetchReal = globalThis.fetch;
+  const simular = (status, cuerpo) => {
+    globalThis.fetch = async () => ({ status, json: async () => cuerpo });
+  };
+  const correr = async () => ML.publicar(
+    { titulo: "A MEDIDA - FORZADOR LATERAL", descripcion: "x", precio: 200000, clave_idempotencia: "cot-1" },
+    "clave-de-prueba");
+
+  const casos = [];
+  simular(200, { ok: true, item_id: "MLA123", titulo: "A Medida - Forzador Lateral",
+                 link: "https://x/MLA123", precio: 200000, pausa_programada: "2026-08-27T20:46:04-03:00" });
+  casos.push(["200 devuelve el link y el id", await correr(), r => r.ok && r.link === "https://x/MLA123" && r.item_id === "MLA123"]);
+
+  simular(409, { ok: false, error: "Ya publicaste eso hace 2 min", item_id: "MLA999", link: "https://x/MLA999" });
+  casos.push(["409 conserva el link del duplicado", await correr(), r => !r.ok && r.codigo === 409 && r.link === "https://x/MLA999"]);
+
+  simular(401, { ok: false, error: "Clave incorrecta." });
+  casos.push(["401 marca el código para pedir otra clave", await correr(), r => !r.ok && r.codigo === 401]);
+
+  simular(400, { ok: false, error: "El título tiene 63 caracteres y el máximo es 60." });
+  casos.push(["400 devuelve el texto listo para mostrar", await correr(), r => !r.ok && r.error.includes("63 caracteres")]);
+
+  globalThis.fetch = async () => { throw new Error("sin red"); };
+  casos.push(["Sin conexión avisa que se puede reintentar", await correr(), r => !r.ok && /reintentar|conexión/i.test(r.error)]);
+
+  globalThis.fetch = fetchReal;
+  for (const [nombre, r, ok] of casos) chkOk("Respuestas del bot", nombre, ok(r), JSON.stringify(r).slice(0, 90));
 }
 
 // ── Coma o punto ─────────────────────────────────────────────────────────────

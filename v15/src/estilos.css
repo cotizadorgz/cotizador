@@ -316,6 +316,16 @@ footer { padding: 18px; text-align: center; }
 }
 .quitar:hover { border-color: var(--error); color: var(--error); }
 
+.btn-ml {
+  border: 1px solid var(--ml); background: color-mix(in srgb, var(--ml) 14%, transparent);
+  color: var(--ml); font: inherit; font-size: 11px; font-weight: 700;
+  padding: 5px 11px; border-radius: 7px; cursor: pointer; white-space: nowrap;
+}
+.btn-ml:hover { background: var(--ml); color: #fff; }
+.caja-ml { margin-top: 10px; }
+.caja-ml a { display: block; margin: 6px 0; word-break: break-all; font-size: 12px; color: var(--royal); }
+.caja-ml .hist-copiar { margin-top: 4px; }
+
 /* ── Historial ── */
 .hist-adentro { padding: 12px; }
 .hist-copiar {

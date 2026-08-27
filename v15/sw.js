@@ -4,13 +4,14 @@
 // Estrategia: RED PRIMERO, cache como respaldo. Es una app de precios: vale más
 // esperar medio segundo y cotizar con la lista de hoy que responder al instante
 // con una copia vieja. Sin señal, el cache contesta y la app abre igual.
-const CACHE = "gz-v15-16";
+const CACHE = "gz-v15-18";
 const ARCHIVOS = [
   "./", "./index.html", "./manifest.json", "./logo.jpg",
   "./icono-180.png", "./icono-192.png", "./icono-512.png",
   "./src/estilos.css", "./src/app.js", "./src/motor.js",
   "./src/precios.js", "./src/perfiles.js", "./src/modelos.js",
-  "./src/panel.js", "./src/lista-publicada.js", "./src/historial.js"
+  "./src/panel.js", "./src/lista-publicada.js", "./src/historial.js",
+  "./src/mercadolibre.js"
 ];
 
 self.addEventListener("install", e => {

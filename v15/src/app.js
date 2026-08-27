@@ -4,10 +4,11 @@ import { MODELOS } from "./modelos.js";
 import { cotizar, preciosVenta, preciosPresupuesto, textoCliente, textoPresupuesto, etiquetaCliente, fmtARS, fmtUSD, r2, leerNumero } from "./motor.js";
 import { aplicarCambios, dibujarPanel } from "./panel.js";
 import * as H from "./historial.js";
+import * as ML from "./mercadolibre.js";
 
 // Se sube a mano en cada publicación. Sirve para confirmar de un vistazo que el
 // navegador cargó la versión nueva y no una copia guardada.
-export const VERSION = "15.9";
+export const VERSION = "16.1";
 
 const $ = id => document.getElementById(id);
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
@@ -73,7 +74,7 @@ const estado = {
   filas: new Set(), eligiendo: false, calculado: false, excluidos: [],
   colectorActivo: false, colectorMonto: 0,
   extraActivo: false, extraNombre: "", extraMonto: 0,
-  orden: [], customizando: false,
+  orden: [], customizando: false, claveCotizacion: null,
   lineas: pedidoGuardado.lineas || [],
   // El embalaje arranca en 0 salvo que hayas dejado un pedido a medio armar:
   // ahí se restaura junto con los ítems.
@@ -462,6 +463,12 @@ function dibujarPrecios(cot) {
       estado.filas.has(fila.id) ? estado.filas.delete(fila.id) : estado.filas.add(fila.id);
       render();
     };
+    if (fila.id === "ml" && fila.ars) {
+      const b = el("button", "btn-ml", "Publicar");
+      b.title = "Crear la publicación en MercadoLibre";
+      b.onclick = ev => { ev.stopPropagation(); publicarEnML(cot, fila.ars); };
+      div.appendChild(b);
+    }
     cont.appendChild(div);
   }
 
@@ -476,6 +483,10 @@ function dibujarPrecios(cot) {
 function registrarEnHistorial(tipo, lineas, embalaje, texto) {
   H.registrar({
     fecha: new Date().toISOString(), tipo, texto, cliente: estado.cliente || null,
+    pid: estado.pid, claveML: estado.claveCotizacion,
+    descripcionML: ultima ? ML.descripcionML(perfilActual(), ultima) : null,
+    precioML: ultima ? preciosPresupuesto([{ etiqueta: "", total: ultima.total }], embalaje)
+      .find(f => f.id === "ml")?.ars : null,
     lineas: lineas.map(l => ({ etiqueta: l.etiqueta, total: l.total })),
     embalaje,
     usd: r2(lineas.reduce((s, l) => s + l.total, 0) + embalaje),
@@ -542,6 +553,13 @@ function dibujarHistorial() {
         guardarPedido(); dibujarPresupuesto();
         $("presupuesto").scrollIntoView({ behavior: "smooth", block: "start" });
       });
+      if (e.pid && e.precioML && e.descripcionML) {
+        btn("Publicar en ML", () => {
+          const perfil = PERFILES[e.pid];
+          publicarEnML({ entrada: {}, noIncluye: [] }, e.precioML,
+            { pid: e.pid, descripcionML: e.descripcionML, claveML: e.claveML });
+        });
+      }
       btn("Borrar", () => { H.borrar(e.id); dibujarHistorial(); }, "peligro");
       cuerpo.appendChild(acciones);
       caja.appendChild(cuerpo);
@@ -617,6 +635,86 @@ function dibujarPresupuesto() {
   $("btnCopiarPedido").disabled = estado.filas.size === 0;
 }
 
+
+// ── MercadoLibre ─────────────────────────────────────────────────────────────
+function pedirClave() {
+  let clave = ML.leerClave();
+  if (!clave) {
+    clave = prompt("Clave del bot de MercadoLibre.\n\nSe guarda en este dispositivo y no se vuelve a pedir.") || "";
+    if (!clave.trim()) return null;
+    ML.guardarClave(clave);
+  }
+  return ML.leerClave();
+}
+
+async function publicarEnML(cot, precioARS, entradaHist = null) {
+  const perfil = entradaHist ? PERFILES[entradaHist.pid] : perfilActual();
+  const pid = perfil.id;
+  const vence = ML.vencimiento();
+  const titulo = ML.tituloML(pid, estado.cliente);
+  const descripcion = entradaHist?.descripcionML || ML.descripcionML(perfil, cot, vence);
+  const precio = Math.round(precioARS);
+
+  const problemas = ML.revisar({ titulo, precio });
+  if (problemas.length) { alert(problemas.join("\n\n")); return; }
+
+  const resumen = `Se va a publicar en MercadoLibre:\n\n${titulo}\n$ ${precio.toLocaleString("es-AR")}\n\n` +
+    `Se pausa sola a las ${ML.ML.horasPausa} horas.\n\n¿Confirmás?`;
+  if (!confirm(resumen)) return;
+
+  const clave = pedirClave();
+  if (!clave) return;
+
+  const caja = $("resultadoML");
+  caja.hidden = false;
+  caja.className = "aviso";
+  caja.textContent = "Publicando…";
+
+  const r = await ML.publicar({
+    titulo, descripcion, precio,
+    clave_idempotencia: entradaHist?.claveML || estado.claveCotizacion || `cot-${Date.now()}`
+  }, clave);
+
+  caja.innerHTML = "";
+
+  const conLink = link => {
+    const a = el("a", null, link);
+    a.href = link; a.target = "_blank"; a.rel = "noopener";
+    caja.appendChild(a);
+    const copiar = el("button", "hist-copiar", "Copiar el link");
+    copiar.onclick = async () => {
+      try { await navigator.clipboard.writeText(link); copiar.textContent = "✓ Copiado"; }
+      catch { prompt("Copiá el link:", link); }
+    };
+    caja.appendChild(copiar);
+  };
+
+  // Duplicado reciente: la publicación ya existe. No es un error, es un aviso con link.
+  if (r.codigo === 409) {
+    caja.className = "aviso";
+    caja.appendChild(el("div", null, r.error));
+    if (r.link) conLink(r.link);
+    return;
+  }
+  if (!r.ok) {
+    caja.className = "aviso error";
+    caja.appendChild(el("div", null, r.error));
+    if (r.codigo === 401) {
+      const b = el("button", "hist-copiar", "Cargar otra clave");
+      b.onclick = () => { ML.borrarClave(); caja.hidden = true; };
+      caja.appendChild(b);
+    }
+    return;
+  }
+  caja.className = "aviso ok";
+  caja.appendChild(el("div", null, `Publicado: ${r.titulo}`));
+  conLink(r.link);
+  if (r.pausa_programada) {
+    const p = new Date(r.pausa_programada);
+    caja.appendChild(el("div", "hist-dolar",
+      `Se pausa sola el ${p.toLocaleDateString("es-AR")} a las ${p.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}`));
+  }
+}
 
 // ── Ciclo ────────────────────────────────────────────────────────────────────
 let ultima = null;
@@ -714,6 +812,9 @@ $("cliente").oninput = () => { estado.cliente = $("cliente").value; guardarPedid
 
 $("btnCalcular").onclick = () => {
   estado.calculado = true;
+  // Una clave por cotización: si hay que reintentar, el bot reconoce que es la misma
+  // y devuelve la publicación original en vez de crear una segunda.
+  estado.claveCotizacion = `cot-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   recalcular();
   $("resultado").scrollIntoView({ behavior: "smooth", block: "nearest" });
 };
