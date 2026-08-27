@@ -116,6 +116,21 @@ export const PRECIOS = {
     pt:   { secciones: [3, 4],   ancho: [0.5, 2.5] }
   },
 
+  // Geometría de las aletas, medida sobre equipos reales (21/08/2026).
+  // El área que le toca a cada caño es el paso entre agujeros por el ancho de aleta.
+  aletas: {
+    simple:   { paso: 75, ancho: 70, separacion: 10, cano: '5/8"' },
+    doble:    { paso: 60, ancho: 60, separacion: 10, cano: '5/8"' },
+    compacta: { paso: 29, ancho: 25, separacion: 8,  cano: '3/8"' }
+  },
+  separacionEspecial: 4,     // opcional en compactos: duplica la superficie
+  // Equivalencia de secciones a HP en los compactos de 3/8" — la misma que muestra
+  // la referencia en pantalla. Sólo coincidencias exactas: fuera de la tabla no se
+  // inventa un HP intermedio, la ficha sale sin frigorías.
+  hpCompacto: { 8: 0.33, 12: 0.5, 16: 0.75, 20: 1 },
+  frigoriasPorHP: 1890,      // a Dt = 8 °C
+  wattPorFrigoria: 1.163,    // conversión kcal/h → W
+
   bajaTemperatura: 1.8,   // aplica sobre la base, nunca sobre el embalaje
 
   venta: {

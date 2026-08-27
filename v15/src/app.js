@@ -5,10 +5,11 @@ import { cotizar, preciosVenta, preciosPresupuesto, textoCliente, textoPresupues
 import { aplicarCambios, dibujarPanel } from "./panel.js";
 import * as H from "./historial.js";
 import * as ML from "./mercadolibre.js";
+import * as Ficha from "./ficha.js";
 
 // Se sube a mano en cada publicación. Sirve para confirmar de un vistazo que el
 // navegador cargó la versión nueva y no una copia guardada.
-export const VERSION = "16.1";
+export const VERSION = "16.3";
 
 const $ = id => document.getElementById(id);
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
@@ -444,6 +445,26 @@ function dibujarResultado(cot) {
     (cot.noIncluye.length ? ` · ${cot.noIncluye.length} ítem${cot.noIncluye.length > 1 ? "s" : ""} sin incluir` : "");
 
   dibujarPrecios(cot);
+  dibujarFicha(cot);
+}
+
+// La ficha sale de la misma cotización: no hay que volver a cargar nada.
+function dibujarFicha(cot) {
+  const caja = $("cajaFicha");
+  const f = Ficha.filas(perfilActual(), cot);
+  if (!f) { caja.hidden = true; return; }
+  caja.hidden = false;
+  const d = Ficha.datos(perfilActual(), cot);
+  $("resumenFicha").textContent = d.frigorias
+    ? `${d.frigorias.toLocaleString("es-AR")} frig/h · ${d.superficie.toFixed(1).replace(".", ",")} m²`
+    : `${d.superficie.toFixed(1).replace(".", ",")} m² de intercambio`;
+  const t = $("fichaTabla"); t.innerHTML = "";
+  for (const [k, v] of f) {
+    const tr = el("tr");
+    tr.appendChild(el("td", null, k));
+    tr.appendChild(el("td", null, String(v)));
+    t.appendChild(tr);
+  }
 }
 
 // Mismo cálculo que el presupuesto: un ítem suelto es un pedido de un ítem.
@@ -757,7 +778,7 @@ function recalcularSuave() {
 
 function recalcular() {
   $("btnCalcular").disabled = !estado.pid || !entradaCompleta();
-  if (!estado.pid || !estado.calculado || !entradaCompleta()) { $("resultado").hidden = true; ultima = null; return; }
+  if (!estado.pid || !estado.calculado || !entradaCompleta()) { $("resultado").hidden = true; $("cajaFicha").hidden = true; ultima = null; return; }
   // El embalaje no es de este ítem sino del pedido: se suma una sola vez abajo.
   const entrada = {
     ...estado.entrada,
@@ -817,6 +838,16 @@ $("btnCalcular").onclick = () => {
   estado.claveCotizacion = `cot-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   recalcular();
   $("resultado").scrollIntoView({ behavior: "smooth", block: "nearest" });
+};
+
+$("btnCopiarFicha").onclick = async () => {
+  if (!ultima) return;
+  const texto = Ficha.texto(perfilActual(), ultima);
+  try { await navigator.clipboard.writeText(texto); }
+  catch { prompt("Copiá la ficha:", texto); return; }
+  const b = $("btnCopiarFicha"), antes = b.textContent;
+  b.textContent = "✓ Copiada";
+  setTimeout(() => { b.textContent = antes; }, 1800);
 };
 
 $("btnCambiar").onclick = () => { estado.eligiendo = true; render(); };

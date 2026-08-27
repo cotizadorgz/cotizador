@@ -5,6 +5,7 @@ import * as L from "../src/lista-publicada.js";
 import { MODELOS } from "../src/modelos.js";
 import * as H from "../src/historial.js";
 import * as ML from "../src/mercadolibre.js";
+import * as Ficha from "../src/ficha.js";
 import { leerNumero } from "../src/motor.js";
 
 const res = { ok: 0, fail: 0, casos: [], grupos: {} };
@@ -450,6 +451,68 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
 
   globalThis.fetch = fetchReal;
   for (const [nombre, r, ok] of casos) chkOk("Respuestas del bot", nombre, ok(r), JSON.stringify(r).slice(0, 90));
+}
+
+// ── Ficha técnica ────────────────────────────────────────────────────────────
+{
+  const dat = (pid, e) => Ficha.datos(PERFILES[pid], cotizar(PERFILES[pid], { enchapado: true, ...e }));
+
+  // Contra la tabla de referencia del cúbico 3HP
+  // A medida y enchapado: sólo hay batería, sin secDobles. La ficha tiene que salir igual.
+  const c3 = dat("cub", { hp: 3, bateria: "5F6C", ancho: 1.40 });
+  chkOk("Ficha técnica", "Cúbico a medida deduce los caños de la batería", c3.canos === 30, String(c3.canos));
+  chk("Ficha técnica", "Cúbico 3HP — frigorías", 5670, c3.frigorias);
+  chk("Ficha técnica", "Cúbico 3HP — watts", 6600, c3.watts);
+  chk("Ficha técnica", "Cúbico 3HP — caños", 30, c3.canos);
+  chkOk("Ficha técnica", "Cúbico 3HP — superficie 30,2 m²", Math.abs(c3.superficie - 30.24) < 0.01, String(c3.superficie));
+
+  const c4 = dat("cub", { hp: 4, bateria: "6F6C", ancho: 1.50 });
+  chk("Ficha técnica", "Cúbico 4HP — frigorías", 7560, c4.frigorias);
+  chk("Ficha técnica", "Cúbico 4HP — watts", 8800, c4.watts);
+  chk("Ficha técnica", "Cúbico 4HP — motores", 3, c4.motores);
+  chkOk("Ficha técnica", "Cúbico 4HP — Ø300, no Ø350", c4.motor === "300", c4.motor);
+
+  // Compactos: el HP sale de la tabla de secciones
+  const comp = dat("fc", { secciones: 12, ancho: 0.36 });
+  chk("Ficha técnica", "Compacto 12 sec = 1/2HP", 945, comp.frigorias);
+  chkOk("Ficha técnica", "Compacto usa caño 3/8\"", comp.cano === '3/8"');
+  chk("Ficha técnica", "Compacto — separación 8 mm", 8, comp.separacion);
+  const fina = dat("fc", { secciones: 12, ancho: 0.36, aletaFina: true });
+  chk("Ficha técnica", "Aleta de 4 mm duplica la superficie", r2(comp.superficie * 2), r2(fina.superficie));
+  chkOk("Ficha técnica", "Fuera de la tabla no inventa HP", dat("fc", { secciones: 14, ancho: 0.36 }).frigorias === null);
+
+  // Cada producto con su aleta
+  const aletas = { ev:"simple", oli:"compacta", resp:"simple", fd:"doble", fs:"simple",
+    fc:"compacta", col:"doble", cub:"doble", rcam:"doble", t58:"doble", t38:"compacta",
+    da:"doble", pt:"doble", cond:"compacta" };
+  for (const [pid, esperada] of Object.entries(aletas)) {
+    chkOk("Ficha técnica", `${pid} lleva aleta ${esperada}`,
+          Ficha.tipoAleta(PERFILES[pid], {}) === esperada, Ficha.tipoAleta(PERFILES[pid], {}));
+  }
+  chkOk("Ficha técnica", "Carniceras simples llevan aleta simple", Ficha.tipoAleta(PERFILES.car, { dobles: false }) === "simple");
+  chkOk("Ficha técnica", "Carnicera Mod.154 lleva aleta doble", Ficha.tipoAleta(PERFILES.car, { dobles: true }) === "doble");
+
+  // El condensador no tiene medida: sale sin superficie pero con frigorías
+  const cond = dat("cond", { hp: 0.5 });
+  chkOk("Ficha técnica", "Condensador sin superficie pero con frigorías",
+        cond.superficie === null && cond.frigorias === 945);
+
+  // Los 15 productos: o dan ficha o la niegan, nunca a medias
+  const casos = { ev:{secciones:6,ancho:0.5}, oli:{secciones:12,ancho:0.5}, resp:{secciones:9,ancho:0.6},
+    fd:{secciones:4,ancho:0.5}, fs:{secciones:4,ancho:0.5}, fc:{secciones:12,ancho:0.36},
+    col:{secDobles:4,ancho:2.3}, cub:{hp:4,bateria:"6F6C",ancho:1.5}, rcam:{hp:3,secDobles:15,ancho:1.4},
+    t58:{hp:0.75,secciones:8,ancho:0.35,bandeja:1000}, t38:{hp:0.5,secciones:24,ancho:0.33,bandeja:800},
+    car:{dobles:true,ancho:2.2,cantVent:4}, da:{secciones:6,ancho:0.6},
+    pt:{hp:0.5,secciones:3,ancho:1.25}, cond:{hp:0.5} };
+  for (const pid of ORDEN) {
+    const c = cotizar(PERFILES[pid], { enchapado: true, ...casos[pid] });
+    const f = Ficha.filas(PERFILES[pid], c);
+    const d = f && Ficha.datos(PERFILES[pid], c);
+    chkOk("Ficha técnica", `${pid} arma su ficha`, Array.isArray(f) && f.length >= 4, f ? `${f.length} filas` : "null");
+    // Los que tienen HP tienen que traer frigorías y watts; los que no, la geometría.
+    if (d && d.hp) chkOk("Ficha técnica", `${pid} con HP trae frigorías y watts`, !!(d.frigorias && d.watts));
+    else if (d) chkOk("Ficha técnica", `${pid} sin HP igual trae la superficie`, d.superficie > 0, String(d.superficie));
+  }
 }
 
 // ── Coma o punto ─────────────────────────────────────────────────────────────
