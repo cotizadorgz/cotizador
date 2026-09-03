@@ -423,11 +423,35 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
     chkOk("Cooler", `${pid}: sin tildar no aparece`, !sin.desglose.some(d => d.concepto === "Cooler"));
   }
 
+  // Cantidad (03/09/2026): antes era una casilla y sólo se podía poner uno.
+  for (const n of [1, 2, 3, 5]) {
+    const q = cotizar(PERFILES.ev, { secciones: 6, ancho: 0.5, cooler: n });
+    chk("Cooler", `${n} coolers suman ${15 * n}`, 15 * n,
+        q.desglose.find(d => /cooler/i.test(d.concepto)).importe);
+  }
+  chkOk("Cooler", "Con uno se llama sólo \"Cooler\"",
+        cotizar(PERFILES.ev, { secciones: 6, ancho: 0.5, cooler: 1 })
+          .desglose.some(d => d.concepto === "Cooler"));
+  chkOk("Cooler", "Con más de uno lleva la cantidad adelante",
+        cotizar(PERFILES.ev, { secciones: 6, ancho: 0.5, cooler: 3 })
+          .desglose.some(d => d.concepto === "3 × cooler"));
+  chk("Cooler", "Cantidad 0 no suma nada", cotizar(PERFILES.ev, { secciones: 6, ancho: 0.5 }).base,
+      cotizar(PERFILES.ev, { secciones: 6, ancho: 0.5, cooler: 0 }).base);
+  {
+    const t2 = etiquetaCliente(PERFILES.ev, cotizar(PERFILES.ev, { secciones: 6, ancho: 0.5, cooler: 2 }).entrada);
+    chkOk("Cooler", "El texto al cliente dice la cantidad", /— con 2 coolers/.test(t2), t2);
+    const d2 = ML.descripcionML(PERFILES.ev, cotizar(PERFILES.ev, { secciones: 6, ancho: 0.5, cooler: 2 }),
+                                new Date("2026-09-04T10:00:00-03:00"));
+    chkOk("Cooler", "La descripción de ML dice la cantidad", /Con 2 coolers/.test(d2));
+  }
+
   // Precio final, no costo: si llevara el markup de los ventiladores daría 22,50.
   const c = cotizar(PERFILES.ev, { secciones: 6, ancho: 0.5, cooler: true });
   chk("Cooler", "No lleva el ×1,5 de los ventiladores", 15,
       c.desglose.find(d => d.concepto === "Cooler").importe,
       `con markup daría ${r2(15 * PRECIOS.ventiladores.markup)}`);
+  chkOk("Cooler", "`cooler: true` de las cotizaciones viejas vale 1",
+        c.desglose.some(d => d.concepto === "Cooler" && d.importe === 15));
   chkOk("Cooler", "Se aclara en el texto al cliente",
         /— con cooler/.test(etiquetaCliente(PERFILES.ev, c.entrada)),
         etiquetaCliente(PERFILES.ev, c.entrada));

@@ -410,6 +410,13 @@ footer { padding: 18px; text-align: center; }
 }
 .agregar-libre:hover { border-color: var(--royal); color: var(--royal); border-style: solid; }
 .fila-agregar td { padding-top: 8px; }
-/* El importe del cooler se ve siempre, pero apagado cuando no está tildado:
-   así se sabe cuánto suma antes de tildarlo. */
+/* El importe del cooler se ve siempre, pero apagado cuando la cantidad es 0:
+   así se sabe cuánto suma antes de prenderlo. */
 .monto-apagado { color: var(--texto3); }
+.celda-cooler { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.monto-cooler { font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* En el desglose el stepper convive con el importe: los de la fila de ventiladores
+   son más grandes porque ahí están solos. */
+.stepper.chico button { width: 26px; height: 26px; font-size: 15px; }
+.stepper.chico span { min-width: 16px; font-size: 13px; }
+.stepper button:disabled { opacity: .4; cursor: default; }

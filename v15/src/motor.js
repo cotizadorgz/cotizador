@@ -72,6 +72,11 @@ export function itemsLibres(e) {
     });
 }
 
+// Cuántos coolers lleva una cotización. `cooler` es una cantidad; `true` vale 1 para
+// las cotizaciones anteriores al 03/09/2026, cuando era una casilla sin cantidad.
+export const cantCoolers = e =>
+  (e.cooler === true ? 1 : Math.max(0, Math.round(e.cooler || 0)));
+
 export function cotizar(perfil, entrada, P = PRECIOS) {
   const avisos = [];
   const e = {
@@ -107,12 +112,14 @@ export function cotizar(perfil, entrada, P = PRECIOS) {
     }));
   }
 
-  // Cooler: casilla disponible en los 15 productos. Importe fijo del panel, a precio
-  // final — no lleva el ×1,5 de los ventiladores.
-  if (e.cooler) {
+  // Coolers: disponibles en los 15 productos, con cantidad. Importe fijo del panel por
+  // unidad, a precio final — no llevan el ×1,5 de los ventiladores.
+  const coolers = cantCoolers(e);
+  if (coolers) {
     adicionales.push(marcar({
-      concepto: "Cooler", importe: r2(P.adicionales.cooler), manual: true,
-      nota: `Importe fijo por equipo: ${P.adicionales.cooler} USD. Va a precio final, sin el markup de los ventiladores.`
+      concepto: coolers > 1 ? `${coolers} × cooler` : "Cooler",
+      importe: r2(coolers * P.adicionales.cooler), manual: true,
+      nota: `${P.adicionales.cooler} USD cada uno, a precio final: sin el markup de los ventiladores.`
     }));
   }
 
@@ -258,7 +265,8 @@ export function etiquetaCliente(perfil, e, P = PRECIOS) {
   if (e.reforzado) t += " — con ventiladores 300mm reforzados";
   if (e.bajaTemp && perfil.bajaTemp) t += " — incluye opcional Baja Temperatura";
   if (e.colector) t += " — con colector y distribuidor";
-  if (e.cooler) t += " — con cooler";
+  const coolers = cantCoolers(e);
+  if (coolers) t += coolers > 1 ? ` — con ${coolers} coolers` : " — con cooler";
   const libres = itemsLibres(e);
   if (libres.length) t += ` — con ${enumerar(libres.map(l => l.nombre.toLowerCase()))}`;
   // Casillas propias del producto. Las que están puestas se juntan en un solo

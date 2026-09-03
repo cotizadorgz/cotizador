@@ -9,7 +9,7 @@ import * as Ficha from "./ficha.js";
 
 // Se sube a mano en cada publicación. Sirve para confirmar de un vistazo que el
 // navegador cargó la versión nueva y no una copia guardada.
-export const VERSION = "16.8";
+export const VERSION = "16.9";
 
 const $ = id => document.getElementById(id);
 const fmtHPtexto = h => ({ 0.25: "1/4", 0.33: "1/3", 0.5: "1/2", 0.75: "3/4" })[h] || String(h).replace(".", ",");
@@ -74,7 +74,7 @@ function ordenGuardado() {
 const estado = {
   pid: null, modo: "modelo", modelo: 0, entrada: {}, vents: null,
   filas: new Set(), eligiendo: false, calculado: false, excluidos: [],
-  colectorActivo: false, colectorMonto: 0, coolerActivo: false,
+  colectorActivo: false, colectorMonto: 0, coolerCant: 0,
   // Ítems libres: siempre hay al menos una fila vacía a la vista, y se agregan las
   // que hagan falta. Antes era uno solo (extraActivo / extraNombre / extraMonto).
   extras: [{ activo: false, nombre: "", monto: 0 }],
@@ -398,17 +398,29 @@ function dibujarResultado(cot) {
     tr.appendChild(tdMonto);
     tabla.appendChild(tr);
   }
-  // Cooler: importe fijo del panel, disponible en los 15 productos.
+  // Coolers: importe fijo del panel, con cantidad, en los 15 productos. La cantidad
+  // manda: 0 es apagado, y la casilla no es más que un atajo para prenderlo y apagarlo.
   {
+    const cant = estado.coolerCant;
+    const fijar = n => { estado.coolerCant = Math.max(0, n); recalcular(); };
     const tr = el("tr", "fila-colector");
     const celda = el("td", "col-tilde");
-    const chk = el("input"); chk.type = "checkbox"; chk.checked = estado.coolerActivo;
-    chk.onchange = () => { estado.coolerActivo = chk.checked; recalcular(); };
+    const chk = el("input"); chk.type = "checkbox"; chk.checked = cant > 0;
+    chk.onchange = () => fijar(chk.checked ? 1 : 0);
     celda.appendChild(chk);
     tr.appendChild(celda);
-    tr.appendChild(el("td", null, "Cooler"));
-    const td = el("td", estado.coolerActivo ? null : "monto-apagado",
-      fmtUSD(PRECIOS.adicionales.cooler));
+    tr.appendChild(el("td", null, cant > 1 ? `${cant} × cooler` : "Cooler"));
+
+    const td = el("td", "celda-cooler");
+    const st = el("div", "stepper chico");
+    const menos = el("button", null, "−"), mas = el("button", null, "+");
+    menos.disabled = cant === 0;
+    menos.onclick = () => fijar(cant - 1);
+    mas.onclick = () => fijar(cant + 1);
+    st.append(menos, el("span", null, String(cant)), mas);
+    td.appendChild(st);
+    td.appendChild(el("span", cant ? "monto-cooler" : "monto-cooler monto-apagado",
+      fmtUSD(Math.max(cant, 1) * PRECIOS.adicionales.cooler)));
     tr.appendChild(td);
     tabla.appendChild(tr);
   }
@@ -860,7 +872,7 @@ let ultima = null;
 function invalidar() {
   estado.calculado = false;
   estado.excluidos = [];   // cambian los componentes: los tildes vuelven a empezar
-  estado.colectorActivo = false; estado.colectorMonto = 0; estado.coolerActivo = false;
+  estado.colectorActivo = false; estado.colectorMonto = 0; estado.coolerCant = 0;
   estado.extras = [{ activo: false, nombre: "", monto: 0 }];
   ultima = null;
   $("resultado").hidden = true;
@@ -885,7 +897,7 @@ function recalcularSuave() {
     embalaje: 0,
     excluidos: estado.excluidos,
     colector: estado.colectorActivo ? estado.colectorMonto : 0,
-    cooler: estado.coolerActivo,
+    cooler: estado.coolerCant,
     extras: extrasActivos()
   };
   if (estado.vents) entrada.vents = estado.vents;
@@ -909,7 +921,7 @@ function recalcular() {
   if (estado.vents) entrada.vents = estado.vents;
   entrada.excluidos = estado.excluidos;
   entrada.colector = estado.colectorActivo ? estado.colectorMonto : 0;
-  entrada.cooler = estado.coolerActivo;
+  entrada.cooler = estado.coolerCant;
   entrada.extras = extrasActivos();
   ultima = cotizar(perfilActual(), entrada);
   $("resultado").hidden = false;
