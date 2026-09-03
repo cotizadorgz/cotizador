@@ -9,7 +9,7 @@ import * as Ficha from "./ficha.js";
 
 // Se sube a mano en cada publicación. Sirve para confirmar de un vistazo que el
 // navegador cargó la versión nueva y no una copia guardada.
-export const VERSION = "16.7";
+export const VERSION = "16.8";
 
 const $ = id => document.getElementById(id);
 const fmtHPtexto = h => ({ 0.25: "1/4", 0.33: "1/3", 0.5: "1/2", 0.75: "3/4" })[h] || String(h).replace(".", ",");
@@ -74,8 +74,10 @@ function ordenGuardado() {
 const estado = {
   pid: null, modo: "modelo", modelo: 0, entrada: {}, vents: null,
   filas: new Set(), eligiendo: false, calculado: false, excluidos: [],
-  colectorActivo: false, colectorMonto: 0,
-  extraActivo: false, extraNombre: "", extraMonto: 0,
+  colectorActivo: false, colectorMonto: 0, coolerActivo: false,
+  // Ítems libres: siempre hay al menos una fila vacía a la vista, y se agregan las
+  // que hagan falta. Antes era uno solo (extraActivo / extraNombre / extraMonto).
+  extras: [{ activo: false, nombre: "", monto: 0 }],
   orden: [], customizando: false, claveCotizacion: null, hpFicha: null,
   lineas: pedidoGuardado.lineas || [],
   // El embalaje arranca en 0 salvo que hayas dejado un pedido a medio armar:
@@ -396,38 +398,67 @@ function dibujarResultado(cot) {
     tr.appendChild(tdMonto);
     tabla.appendChild(tr);
   }
-  // Ítem libre: nombre e importe a elección.
+  // Cooler: importe fijo del panel, disponible en los 15 productos.
   {
     const tr = el("tr", "fila-colector");
     const celda = el("td", "col-tilde");
-    const chk = el("input"); chk.type = "checkbox"; chk.checked = estado.extraActivo;
-    chk.onchange = () => { estado.extraActivo = chk.checked; recalcular(); };
+    const chk = el("input"); chk.type = "checkbox"; chk.checked = estado.coolerActivo;
+    chk.onchange = () => { estado.coolerActivo = chk.checked; recalcular(); };
+    celda.appendChild(chk);
+    tr.appendChild(celda);
+    tr.appendChild(el("td", null, "Cooler"));
+    const td = el("td", estado.coolerActivo ? null : "monto-apagado",
+      fmtUSD(PRECIOS.adicionales.cooler));
+    tr.appendChild(td);
+    tabla.appendChild(tr);
+  }
+  // Ítems libres: nombre e importe a elección, tantos como hagan falta.
+  estado.extras.forEach((ex, i) => {
+    const tr = el("tr", "fila-colector");
+    const celda = el("td", "col-tilde");
+    const chk = el("input"); chk.type = "checkbox"; chk.checked = ex.activo;
+    chk.onchange = () => { ex.activo = chk.checked; recalcular(); };
     celda.appendChild(chk);
     tr.appendChild(celda);
 
     const tdNombre = el("td");
     const nombre = el("input", "nombre-libre");
-    nombre.type = "text"; nombre.placeholder = "Nuevo ítem"; nombre.autocomplete = "off";
-    nombre.value = estado.extraNombre;
-    nombre.disabled = !estado.extraActivo;
-    nombre.oninput = () => {
-      estado.extraNombre = nombre.value;
-      if (estado.extraActivo) recalcularSuave();
-    };
+    nombre.type = "text"; nombre.autocomplete = "off";
+    nombre.placeholder = i === 0 ? "Nuevo ítem" : "Otro ítem";
+    nombre.value = ex.nombre;
+    nombre.disabled = !ex.activo;
+    nombre.oninput = () => { ex.nombre = nombre.value; if (ex.activo) recalcularSuave(); };
     tdNombre.appendChild(nombre);
     tr.appendChild(tdNombre);
 
-    const tdMonto = el("td");
+    const tdMonto = el("td", "celda-libre");
     const monto = el("input", "monto-libre");
     monto.type = "text"; monto.inputMode = "decimal"; monto.placeholder = "USD";
-    monto.value = estado.extraMonto || "";
-    monto.disabled = !estado.extraActivo;
-    monto.oninput = () => {
-      estado.extraMonto = leerNumero(monto.value) || 0;
-      if (estado.extraActivo) recalcularSuave();
-    };
+    monto.value = ex.monto || "";
+    monto.disabled = !ex.activo;
+    monto.oninput = () => { ex.monto = leerNumero(monto.value) || 0; if (ex.activo) recalcularSuave(); };
     tdMonto.appendChild(monto);
+    // La primera fila no se puede sacar: es la que deja el desglose como estaba.
+    if (i > 0) {
+      const quitar = el("button", "quitar-libre", "×");
+      quitar.type = "button";
+      quitar.title = "Sacar este ítem";
+      quitar.onclick = () => { estado.extras.splice(i, 1); recalcular(); };
+      tdMonto.appendChild(quitar);
+    }
     tr.appendChild(tdMonto);
+    tabla.appendChild(tr);
+  });
+  {
+    const tr = el("tr", "fila-agregar");
+    tr.appendChild(el("td", "col-tilde"));
+    const td = el("td"); td.colSpan = 2;
+    const b = el("button", "agregar-libre", "+ Agregar otro ítem");
+    b.type = "button";
+    // Arranca tildado: si lo agregaste es porque lo vas a cobrar.
+    b.onclick = () => { estado.extras.push({ activo: true, nombre: "", monto: 0 }); recalcular(); };
+    td.appendChild(b);
+    tr.appendChild(td);
     tabla.appendChild(tr);
   }
   if (estado.embalaje) {
@@ -829,8 +860,8 @@ let ultima = null;
 function invalidar() {
   estado.calculado = false;
   estado.excluidos = [];   // cambian los componentes: los tildes vuelven a empezar
-  estado.colectorActivo = false; estado.colectorMonto = 0;
-  estado.extraActivo = false; estado.extraNombre = ""; estado.extraMonto = 0;
+  estado.colectorActivo = false; estado.colectorMonto = 0; estado.coolerActivo = false;
+  estado.extras = [{ activo: false, nombre: "", monto: 0 }];
   ultima = null;
   $("resultado").hidden = true;
   $("btnCalcular").disabled = !estado.pid || !entradaCompleta();
@@ -839,6 +870,11 @@ function invalidar() {
 function entradaCompleta() {
   return camposVisibles().every(c => estado.entrada[c.id] !== "" && estado.entrada[c.id] != null);
 }
+
+// Los ítems libres tildados y con importe. Los vacíos no viajan a la cotización.
+const extrasActivos = () => estado.extras
+  .filter(x => x.activo && x.monto)
+  .map(x => ({ nombre: x.nombre, importe: x.monto }));
 
 // Recalcula sin redibujar el desglose, para no robarle el foco al campo del colector.
 function recalcularSuave() {
@@ -849,7 +885,8 @@ function recalcularSuave() {
     embalaje: 0,
     excluidos: estado.excluidos,
     colector: estado.colectorActivo ? estado.colectorMonto : 0,
-    extra: estado.extraActivo ? { nombre: estado.extraNombre, importe: estado.extraMonto } : null
+    cooler: estado.coolerActivo,
+    extras: extrasActivos()
   };
   if (estado.vents) entrada.vents = estado.vents;
   ultima = cotizar(perfilActual(), entrada);
@@ -872,7 +909,8 @@ function recalcular() {
   if (estado.vents) entrada.vents = estado.vents;
   entrada.excluidos = estado.excluidos;
   entrada.colector = estado.colectorActivo ? estado.colectorMonto : 0;
-  entrada.extra = estado.extraActivo ? { nombre: estado.extraNombre, importe: estado.extraMonto } : null;
+  entrada.cooler = estado.coolerActivo;
+  entrada.extras = extrasActivos();
   ultima = cotizar(perfilActual(), entrada);
   $("resultado").hidden = false;
   dibujarResultado(ultima);

@@ -52,6 +52,26 @@ function validarRangos(perfil, e, avisos, P) {
   }
 }
 
+// Los ítems libres de una entrada, ya con su nombre definitivo. Acepta las dos formas:
+// `extras` (varios, la de ahora) y `extra` (uno solo, la de las cotizaciones viejas).
+//
+// El nombre sale de acá y de ningún otro lado: es el que se ve en el desglose, en el
+// texto al cliente y en la publicación, y además es la llave con la que se saca una
+// línea del presupuesto. Por eso los repetidos se numeran — dos líneas con el mismo
+// nombre se destildarían juntas. Sin nombre se cobra como "Adicional", nunca como un
+// cargo sin identificar.
+export function itemsLibres(e) {
+  const usados = new Map();
+  return [...(e.extras || []), ...(e.extra ? [e.extra] : [])]
+    .filter(x => x && x.importe)
+    .map(x => {
+      const base = (x.nombre || "").trim() || "Adicional";
+      const n = (usados.get(base) || 0) + 1;
+      usados.set(base, n);
+      return { nombre: n === 1 ? base : `${base} ${n}`, importe: x.importe };
+    });
+}
+
 export function cotizar(perfil, entrada, P = PRECIOS) {
   const avisos = [];
   const e = {
@@ -87,12 +107,20 @@ export function cotizar(perfil, entrada, P = PRECIOS) {
     }));
   }
 
-  // Ítem libre: nombre e importe los pone el usuario. Si no le pone nombre se
-  // cobra igual, pero como "Adicional" — nunca como un cargo sin identificar.
-  if (e.extra && e.extra.importe) {
+  // Cooler: casilla disponible en los 15 productos. Importe fijo del panel, a precio
+  // final — no lleva el ×1,5 de los ventiladores.
+  if (e.cooler) {
     adicionales.push(marcar({
-      concepto: (e.extra.nombre || "").trim() || "Adicional",
-      importe: r2(e.extra.importe), manual: true,
+      concepto: "Cooler", importe: r2(P.adicionales.cooler), manual: true,
+      nota: `Importe fijo por equipo: ${P.adicionales.cooler} USD. Va a precio final, sin el markup de los ventiladores.`
+    }));
+  }
+
+  // Ítems libres: nombre e importe los pone el usuario, y pueden ser varios.
+  // El nombre ya viene resuelto por itemsLibres().
+  for (const libre of itemsLibres(e)) {
+    adicionales.push(marcar({
+      concepto: libre.nombre, importe: r2(libre.importe), manual: true,
       nota: "Ítem agregado a mano para esta cotización"
     }));
   }
@@ -230,7 +258,9 @@ export function etiquetaCliente(perfil, e, P = PRECIOS) {
   if (e.reforzado) t += " — con ventiladores 300mm reforzados";
   if (e.bajaTemp && perfil.bajaTemp) t += " — incluye opcional Baja Temperatura";
   if (e.colector) t += " — con colector y distribuidor";
-  if (e.extra && e.extra.importe) t += ` — con ${((e.extra.nombre || "").trim() || "adicional").toLowerCase()}`;
+  if (e.cooler) t += " — con cooler";
+  const libres = itemsLibres(e);
+  if (libres.length) t += ` — con ${enumerar(libres.map(l => l.nombre.toLowerCase()))}`;
   // Casillas propias del producto. Las que están puestas se juntan en un solo
   // "con A y B", y las que faltan en un "sin A y B". `orden` decide cómo se leen.
   const con = [], sin = [];
@@ -249,6 +279,7 @@ export function etiquetaCliente(perfil, e, P = PRECIOS) {
 // filas = ids de precio elegidos, en el orden en que se muestran.
 // "Salida de cobre" → "salida de cobre": van en medio de una frase.
 const enMinuscula = t => t.charAt(0).toLowerCase() + t.slice(1);
+const enumerar = xs => (xs.length < 2 ? (xs[0] || "") : `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`);
 const listaFalta = lista => (lista || []).map(enMinuscula).join(", ");
 const lineaNoIncluye = lista =>
   (lista && lista.length ? `\n_No incluye: ${listaFalta(lista)}_` : "");

@@ -2,7 +2,7 @@
 // El bot corre 24/7, tiene el token de ML y crea la publicación a partir de una
 // plantilla. Acá sólo se arma el pedido y se muestra lo que responde.
 
-import { fmtHP } from "./motor.js";
+import { fmtHP, itemsLibres } from "./motor.js";
 
 export const ML = {
   url: "https://gzbot.duckdns.org/publicar",
@@ -86,7 +86,8 @@ export function descripcionML(perfil, cot, vence = vencimiento()) {
   if (e.reforzado) aclara.push("con ventiladores 300mm reforzados");
   if (e.bajaTemp && perfil.bajaTemp) aclara.push("incluye opcional de baja temperatura");
   if (e.colector) aclara.push("con colector y distribuidor");
-  if (e.extra && e.extra.importe) aclara.push(`con ${((e.extra.nombre || "adicional").trim()).toLowerCase()}`);
+  if (e.cooler) aclara.push("con cooler");
+  for (const libre of itemsLibres(e)) aclara.push(`con ${libre.nombre.toLowerCase()}`);
   for (const o of perfil.opciones || []) {
     const t = e[o.id] ? o.si : o.no;
     if (t) aclara.push((e[o.id] ? "con " : "sin ") + (typeof t === "function" ? t(e) : t));

@@ -110,7 +110,7 @@ export const PERFILES = {
     campos: [N("secciones","Secciones dobles",1,"ej. 4"), A("ej. 0.50")],
     chapa: true,
     textoSinChapa: "sin enchapar y sin ventilador",
-    ventTarifa: "fija",
+    ventTarifa: "real",   // 03/09/2026: un 300mm sale $66, no $37,50. Ver techo 5/8".
     ventDefault: e => (e.enchapado ? v("v200", 1) : sinVent()),
     bateria: (e, P, av) => e.enchapado
       ? { concepto: `Batería enchapada ${e.secciones} sec × ${num(e.ancho)}m`, importe: deTabla(P.precioMetro.lateralDoble, e.secciones, av, "Lateral doble") * e.ancho,
@@ -131,7 +131,7 @@ export const PERFILES = {
     campos: [N("secciones","Secciones",1,"ej. 4"), A("ej. 0.50")],
     chapa: true,
     textoSinChapa: "sin enchapar y sin ventilador",
-    ventTarifa: "fija",
+    ventTarifa: "real",   // igual que el lateral doble
     ventDefault: e => (e.enchapado ? v("v200", 1) : sinVent()),
     bateria: (e, P, av) => e.enchapado
       ? { concepto: `Batería enchapada ${e.secciones} sec × ${num(e.ancho)}m`, importe: deTabla(P.precioMetro.lateralSimple, e.secciones, av, "Lateral simple") * e.ancho,
@@ -233,7 +233,11 @@ export const PERFILES = {
     chapa: true,
     textoSinChapa: "sin bandeja plástica y sin ventilador",
     defaults: { bandeja: 800 },
-    ventTarifa: "fija",
+    // Precio REAL del ventilador (03/09/2026). Con la tarifa fija, elegir un 300mm
+    // cobraba $37,50 —el precio de un 200 o un 250— en vez de los $66 que sale.
+    // No mueve ningún precio publicado: los modelos de la lista llevan 250, que a
+    // tarifa real cuesta lo mismo ($25 → $37,50).
+    ventTarifa: "real",
     ventDefault: e => (e.enchapado ? v("v250", 1) : sinVent()),
     bateria: (e, P) => ({ concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m`, importe: e.secciones * e.ancho * P.tarifas.seccionDoble }),
     adicionales: (e, P, av) => [
@@ -251,7 +255,7 @@ export const PERFILES = {
     chapa: true,
     textoSinChapa: "sin bandeja plástica y sin ventilador",
     defaults: { bandeja: 800 },
-    ventTarifa: "fija",
+    ventTarifa: "real",   // igual que el techo 5/8": ver la nota de arriba
     ventDefault: e => (e.enchapado ? v("v250", 1) : sinVent()),
     bateria: (e, P) => ({ concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m`, importe: e.secciones * e.ancho * P.tarifas.compacto38 }),
     adicionales: (e, P, av) => [
@@ -281,7 +285,7 @@ export const PERFILES = {
     aleta: "doble",
     medida: medidaSec,
     campos: [S("secciones","Secciones dobles", [[5,"5"],[6,"6"],[7,"7"]]), A("ej. 0.60")],
-    ventTarifa: "fija",
+    ventTarifa: "real",   // igual que los laterales y el techo
     ventDefault: () => v("v200", 2),
     bateria: (e, P, av) => ({
       concepto: `Batería ${e.secciones} sec dobles × ${num(e.ancho)}m`,

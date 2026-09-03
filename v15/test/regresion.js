@@ -398,6 +398,124 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
       cotizar(PERFILES.resp, { secciones: 16, ancho: 0.8 }).base);
 }
 
+// ── Cooler ──────────────────────────────────────────────────────────────────
+// Casilla nueva (03/09/2026), disponible en los 15 productos. Va a PRECIO FINAL:
+// entra por su importe, sin el ×1,5 de los ventiladores.
+{
+  chk("Cooler", "Sale del panel y vale 15", 15, PRECIOS.adicionales.cooler);
+
+  const entradas = {
+    ev:{secciones:6,ancho:0.5}, oli:{secciones:12,ancho:0.5}, resp:{secciones:4,ancho:0.6},
+    fd:{secciones:4,ancho:0.5}, fs:{secciones:4,ancho:0.5}, fc:{secciones:12,ancho:0.36},
+    col:{secDobles:4,ancho:2.3,uniones:0}, cub:{hp:2,bateria:"5F6C",ancho:0.9},
+    rcam:{hp:2,secDobles:10,ancho:1.2}, t58:{secciones:6,ancho:0.35,bandeja:800},
+    t38:{secciones:16,ancho:0.33,bandeja:800}, car:{dobles:false,ancho:1.2,cantVent:2},
+    da:{secciones:5,ancho:0.6}, pt:{secciones:3,ancho:1.25}, cond:{hp:0.5}
+  };
+  // Está en los 15 y suma siempre lo mismo, sin importar el producto.
+  for (const pid of ORDEN) {
+    const base = { enchapado: true, ...entradas[pid] };
+    const sin = cotizar(PERFILES[pid], base);
+    const con = cotizar(PERFILES[pid], { ...base, cooler: true });
+    chk("Cooler", `${pid}: suma 15 exactos`, 15, r2(con.base - sin.base));
+    chkOk("Cooler", `${pid}: aparece en el desglose`,
+          con.desglose.some(d => d.concepto === "Cooler" && d.importe === 15));
+    chkOk("Cooler", `${pid}: sin tildar no aparece`, !sin.desglose.some(d => d.concepto === "Cooler"));
+  }
+
+  // Precio final, no costo: si llevara el markup de los ventiladores daría 22,50.
+  const c = cotizar(PERFILES.ev, { secciones: 6, ancho: 0.5, cooler: true });
+  chk("Cooler", "No lleva el ×1,5 de los ventiladores", 15,
+      c.desglose.find(d => d.concepto === "Cooler").importe,
+      `con markup daría ${r2(15 * PRECIOS.ventiladores.markup)}`);
+  chkOk("Cooler", "Se aclara en el texto al cliente",
+        /— con cooler/.test(etiquetaCliente(PERFILES.ev, c.entrada)),
+        etiquetaCliente(PERFILES.ev, c.entrada));
+  chkOk("Cooler", "Va en la descripción de MercadoLibre",
+        /Con cooler/.test(ML.descripcionML(PERFILES.ev, c, new Date("2026-09-04T10:00:00-03:00"))));
+
+  // Editable desde el panel.
+  const original = PRECIOS.adicionales.cooler;
+  PRECIOS.adicionales.cooler = 18;
+  chk("Cooler", "Cambiarlo en el panel cambia el precio", 18,
+      cotizar(PERFILES.ev, { secciones: 6, ancho: 0.5, cooler: true })
+        .desglose.find(d => d.concepto === "Cooler").importe);
+  PRECIOS.adicionales.cooler = original;
+}
+
+// ── Ventiladores a precio real ──────────────────────────────────────────────
+// 03/09/2026: en techo, laterales y doble ataque un 300mm se cobraba $37,50 —el precio
+// de un 200 o un 250—. La tarifa fija queda sólo donde se decidió el 19/08/2026:
+// lateral compacto, carniceras y piso torteras.
+{
+  const V = o => ({ v200: 0, v250: 0, v300: 0, v300r: 0, ...o });
+  const entradas = {
+    fd:{secciones:4,ancho:0.5}, fs:{secciones:4,ancho:0.5}, da:{secciones:5,ancho:0.6},
+    t58:{secciones:6,ancho:0.35,bandeja:800}, t38:{secciones:16,ancho:0.33,bandeja:800},
+    cub:{hp:2,bateria:"5F6C",ancho:0.9}, rcam:{hp:2,secDobles:10,ancho:1.2},
+    fc:{secciones:12,ancho:0.36}, car:{dobles:false,ancho:1.2}, pt:{secciones:3,ancho:1.25}
+  };
+  const unitario = (pid, tipo) => cotizar(PERFILES[pid],
+    { enchapado: true, ...entradas[pid], vents: V({ [tipo]: 1 }) })
+    .desglose.find(d => /ventilador/.test(d.concepto)).unitario;
+
+  // El 300mm cuesta 44 → 66. El 200 y el 250 cuestan 25 → 37,50 en todos.
+  for (const pid of ["fd", "fs", "da", "t58", "t38", "cub", "rcam"]) {
+    chk("Ventilador real", `${pid}: 300mm = 66`, 66, unitario(pid, "v300"));
+    chk("Ventilador real", `${pid}: 250mm = 37,50`, 37.5, unitario(pid, "v250"));
+  }
+  // Estos tres van a tarifa fija a propósito: el 300mm sigue a 37,50.
+  for (const pid of ["fc", "car", "pt"]) {
+    chk("Ventilador real", `${pid}: sigue a tarifa fija`, 37.5, unitario(pid, "v300"));
+  }
+  // El cambio no puede mover ningún precio publicado: esos modelos llevan 200 o 250,
+  // que valen lo mismo en las dos tarifas. (Lo verifican también los grupos de arriba.)
+  chk("Ventilador real", "Techo 5/8\" 1/3HP sigue dando el precio de lista", 147.40,
+      cotizar(PERFILES.t58, { enchapado: true, secciones: 6, ancho: 0.35, bandeja: 800 }).base);
+  chk("Ventilador real", "Lateral doble 4 sec × 0,40m sigue dando el de lista", 99.90,
+      cotizar(PERFILES.fd, { enchapado: true, secciones: 4, ancho: 0.40 }).base);
+}
+
+// ── Varios ítems libres ─────────────────────────────────────────────────────
+// 03/09/2026: antes había uno solo (`extra`). Ahora van varios en `extras`, y el
+// singular se sigue aceptando porque lo usan las cotizaciones viejas.
+{
+  const base = { secciones: 6, ancho: 0.5 };
+  const solo = cotizar(PERFILES.ev, base).base;
+
+  const c = cotizar(PERFILES.ev, { ...base, extras: [
+    { nombre: "Patas reforzadas", importe: 20 }, { nombre: "", importe: 5 }, { nombre: "", importe: 7 }
+  ]});
+  chk("Varios ítems libres", "Suman los tres", r2(solo + 32), c.base);
+  const libres = c.desglose.filter(d => d.manual).map(d => d.concepto);
+  chkOk("Varios ítems libres", "Los sin nombre se numeran",
+        libres.join(" · ") === "Patas reforzadas · Adicional · Adicional 2", libres.join(" · "));
+
+  // Dos con el mismo nombre también se numeran: el concepto es la llave con la que se
+  // saca una línea, y dos iguales se destildarían juntas.
+  const d = cotizar(PERFILES.ev, { ...base, extras: [
+    { nombre: "Cooler", importe: 15 }, { nombre: "Cooler", importe: 15 }
+  ]});
+  chkOk("Varios ítems libres", "Los repetidos se numeran",
+        d.desglose.filter(x => x.manual).map(x => x.concepto).join(" · ") === "Cooler · Cooler 2");
+  const e = cotizar(PERFILES.ev, { ...base, extras: [
+    { nombre: "Cooler", importe: 15 }, { nombre: "Cooler", importe: 15 }
+  ], excluidos: ["Cooler 2"] });
+  chk("Varios ítems libres", "Se saca uno solo, no los dos", r2(solo + 15), e.base);
+  chkOk("Varios ítems libres", "Avisa cuál sacó", e.noIncluye.join() === "Cooler 2", e.noIncluye.join());
+
+  // El texto al cliente los enumera en una sola frase, no repite "— con".
+  const t = etiquetaCliente(PERFILES.ev, c.entrada);
+  chkOk("Varios ítems libres", "El texto los enumera en una frase",
+        t.includes("— con patas reforzadas, adicional y adicional 2"), t);
+
+  // Los vacíos no entran, y la forma vieja sigue andando.
+  chk("Varios ítems libres", "Los de importe 0 no suman", solo,
+      cotizar(PERFILES.ev, { ...base, extras: [{ nombre: "Nada", importe: 0 }] }).base);
+  chk("Varios ítems libres", "`extra` en singular sigue funcionando", r2(solo + 15),
+      cotizar(PERFILES.ev, { ...base, extra: { nombre: "Cooler", importe: 15 } }).base);
+}
+
 // ── Las tres secciones ──────────────────────────────────────────────────────
 // Pendiente #2 de la ficha: referencia para identificar un equipo ya armado.
 {

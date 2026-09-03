@@ -51,6 +51,10 @@ export const PRECIOS = {
       fd: [[5, 8], [7, 12]]      // por secciones: hasta 5 → $8 · 6 y 7 → $12
     },
     salidaCu: 8,
+    // Cooler: opcional en los 15 productos, se tilda desde el desglose (03/09/2026).
+    // Va a PRECIO FINAL, no a costo: entra derecho por su importe, sin el ×1,5 de los
+    // ventiladores. Es el mismo trato que los costados o la salida de cobre.
+    cooler: 15,
     curvas: 8,                   // techo 3/8"
     curvasPorSeccion: 0.25,      // evaporadores y compactos
     colDistTecho38: 30,
