@@ -113,6 +113,45 @@
     </details>
   </section>
 
+  <section class="tarjeta" id="despacho">
+    <details class="caja-desglose" id="cajaDespacho">
+      <summary><span>Aviso de despacho</span><span id="despResumen"></span></summary>
+      <div class="desp-adentro">
+        <p class="pista pista-izq">Sacale una foto al remito de Vía Cargo y sale el mensaje para
+          el comprador de MercadoLibre. Va como texto porque la foto del remito ML la rechaza.</p>
+        <div id="despZona" class="desp-zona">
+          <p>Arrastrá la foto acá</p>
+          <div class="desp-zona-botones">
+            <button type="button" id="despBtnCamara">Sacar la foto</button>
+            <button type="button" id="despBtnElegir">Elegir un archivo</button>
+          </div>
+          <div class="desp-atajo">…o pegala con Ctrl+V (Cmd+V en Mac)</div>
+        </div>
+        <div id="despFoto" class="desp-foto"></div>
+        <!-- capture abre la cámara directo en el celular; en la PC cae al explorador -->
+        <input type="file" id="despCamara" accept="image/*" capture="environment" hidden>
+        <input type="file" id="despArchivo" accept="image/*" hidden>
+        <label class="chk" data-on="true">
+          <input type="checkbox" id="despConOcr" checked>
+          <span>Leer también el resto del remito (baja un lector de ~6 MB la primera vez)</span>
+        </label>
+        <div id="despEstado" class="desp-estado"></div>
+        <div id="despAvisos"></div>
+        <div id="despCampos" class="campos"></div>
+        <label class="chk" data-on="false"><input type="checkbox" id="despDomicilio"><span>Entrega a domicilio</span></label>
+        <label class="chk" data-on="false"><input type="checkbox" id="despGuiones"><span>Guía con guiones (si ML rechaza el mensaje)</span></label>
+        <pre id="despMensaje" class="desp-mensaje"></pre>
+        <p id="despCuenta" class="desp-cuenta"></p>
+        <p id="despFaltan" class="desp-faltan"></p>
+        <div class="botonera">
+          <button class="copiar" id="despBtnCopiar">Copiar el mensaje</button>
+          <button class="copiar secundario" id="despBtnLeerResto">Volver a leer</button>
+          <button class="copiar secundario peligro" id="despBtnLimpiar">Otro remito</button>
+        </div>
+      </div>
+    </details>
+  </section>
+
   <section class="tarjeta" id="historial" hidden>
     <details class="caja-desglose" id="cajaHistorial">
       <summary><span>Historial en este dispositivo</span><span id="resumenHist"></span></summary>

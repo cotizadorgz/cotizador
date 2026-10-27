@@ -106,6 +106,45 @@ export function descripcionML(perfil, cot, vence = vencimiento()) {
   ].filter(Boolean).join("\n\n");
 }
 
+// ── Traducir lo que contesta ML ──────────────────────────────────────────────
+// ML contesta en inglés y el bot reenvía ese texto tal cual (su `_explicar()` sólo
+// saca el `cause[].message` del JSON). Acá se traducen los casos que ya nos pasaron,
+// a algo que diga QUÉ HACER. El texto original queda siempre a la vista: si mañana
+// ML cambia el mensaje, no se pierde el dato para diagnosticar.
+export const ERRORES_ML = [
+  {
+    busca: /polic(y|ies).*unauthorized|unauthorized.*polic(y|ies)/i,
+    titulo: "MercadoLibre no autorizó al bot",
+    detalle: "No es tu clave del endpoint: esa anduvo bien, si no te habría dicho " +
+             "\u0022Clave inválida\u0022. Lo que no autoriza es el permiso del bot contra la " +
+             "cuenta de ML — el token venció o se revocó, y el refresco automático " +
+             "tampoco pudo renovarlo.",
+    hacer: "Hay que reautorizar la aplicación en MercadoLibre y dejar el token nuevo " +
+           "en la VM del bot. No se arregla desde la calculadora ni volviendo a " +
+           "intentar: cada intento va a dar lo mismo."
+  },
+  {
+    busca: /item.*not.*valid.*categor|invalid.*category/i,
+    titulo: "La categoría de la plantilla no sirve para este producto",
+    detalle: "ML rechazó la categoría que trae la plantilla.",
+    hacer: "Revisá la plantilla en el bot, o publicá este a mano."
+  },
+  {
+    busca: /title.*invalid|invalid.*title/i,
+    titulo: "ML rechazó el título",
+    detalle: "El título no le gustó a ML. El patrón que funciona arranca con el " +
+             "producto (\u0022Evaporador…\u0022) y nunca con un modificador.",
+    hacer: "Cambiá algún dato del equipo para que se arme otro título, o publicá a mano."
+  }
+];
+
+// Devuelve la explicación en castellano, o null si no la conocemos.
+export function explicarError(mensaje) {
+  const t = String(mensaje || "");
+  const e = ERRORES_ML.find(x => x.busca.test(t));
+  return e ? { titulo: e.titulo, detalle: e.detalle, hacer: e.hacer, original: t } : null;
+}
+
 export function revisar({ titulo, precio }) {
   const problemas = [];
   if (titulo.length > ML.maxTitulo) problemas.push(`El título tiene ${titulo.length} caracteres y el máximo es ${ML.maxTitulo}.`);

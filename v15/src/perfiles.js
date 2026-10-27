@@ -149,7 +149,9 @@ export const PERFILES = {
     campos: [N("secciones","Secciones",1,"ej. 12"), A("ej. 0.36")],
     chapa: true,
     textoSinChapa: "sin enchapar y sin ventilador",
-    ventTarifa: "fija",
+    // 02/10/2026: un 300mm sale $66 en todos lados. Revisa la decisión del
+    // 19/08/2026, que decía tarifa fija "aunque se elija un v300".
+    ventTarifa: "real",
     ventDefault: e => (e.enchapado ? v("v250", 1) : sinVent()),
     bateria: (e, P) => ({
       concepto: `Batería ${e.secciones} sec × ${num(e.ancho)}m`,
@@ -272,7 +274,9 @@ export const PERFILES = {
     seccionesFicha: e => (e.dobles ? 4 : 3),
     campos: [S("dobles","Batería", [[false,"3 secciones simples"],[true,"4 secciones dobles"]]), A("ej. 1.40")],
     defaults: { dobles: false },
-    ventTarifa: "fija",
+    // 02/10/2026: un 300mm sale $66 en todos lados. Revisa la decisión del
+    // 19/08/2026, que decía tarifa fija "aunque se elija un v300".
+    ventTarifa: "real",
     ventDefault: e => v("v250", e.cantVent ?? 2),
     bateria: (e, P) => ({
       concepto: `Batería ${e.dobles ? "4 sec dobles" : "3 sec simples"} × ${num(e.ancho)}m`,
@@ -330,7 +334,9 @@ export const PERFILES = {
     campos: [S("secciones","Secciones", [[3,"3"],[4,"4"]]), A("ej. 1.25")],
     chapa: true,
     textoSinChapa: "sin enchapar y sin ventilador",
-    ventTarifa: "fija",
+    // 02/10/2026: un 300mm sale $66 en todos lados. Revisa la decisión del
+    // 19/08/2026, que decía tarifa fija "aunque se elija un v300".
+    ventTarifa: "real",
     ventDefault: e => (e.enchapado ? v("v200", (PT_VENT_CANT[e.secciones] || (() => 0))(e.ancho)) : sinVent()),
     bateria: (e, P, av) => {
       const t = P.tarifas.pisoTorteras;

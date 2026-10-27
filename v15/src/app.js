@@ -1,4 +1,4 @@
-import { PRECIOS } from "./precios.js";
+import { PRECIOS, costoVentilador } from "./precios.js";
 import { PERFILES, ORDEN } from "./perfiles.js";
 import { MODELOS } from "./modelos.js";
 import { cotizar, preciosVenta, preciosPresupuesto, textoCliente, textoPresupuesto, etiquetaCliente, fmtARS, fmtUSD, r2, leerNumero } from "./motor.js";
@@ -6,10 +6,11 @@ import { aplicarCambios, dibujarPanel } from "./panel.js";
 import * as H from "./historial.js";
 import * as ML from "./mercadolibre.js";
 import * as Ficha from "./ficha.js";
+import { montarDespacho } from "./despacho-app.js";
 
 // Se sube a mano en cada publicación. Sirve para confirmar de un vistazo que el
 // navegador cargó la versión nueva y no una copia guardada.
-export const VERSION = "16.9";
+export const VERSION = "17.2";
 
 const $ = id => document.getElementById(id);
 const fmtHPtexto = h => ({ 0.25: "1/4", 0.33: "1/3", 0.5: "1/2", 0.75: "3/4" })[h] || String(h).replace(".", ",");
@@ -313,7 +314,12 @@ function dibujarVentiladores() {
   const tipos = estado.entrada.reforzado ? ["v300r"] : (p.ventTipos || ["v200", "v250", "v300"]);
   for (const tipo of tipos) {
     const def = PRECIOS.ventiladores.tipos[tipo];
-    const unit = (p.ventTarifa === "fija" ? PRECIOS.ventiladores.costoFijo : def.costo) * PRECIOS.ventiladores.markup;
+    // El precio que se muestra sale de la MISMA función que cobra el motor. Antes
+    // se recalculaba acá con una copia de la regla: si una se tocaba y la otra no,
+    // la pantalla decía un precio y la cotización cobraba otro. Además esa copia
+    // ignoraba que ventTarifa puede ser una función del equipo.
+    const tarifa = typeof p.ventTarifa === "function" ? p.ventTarifa(estado.entrada) : p.ventTarifa;
+    const unit = costoVentilador(tipo, tarifa, PRECIOS);
     const fila = el("div", "vents-fila");
     const nom = el("div", "nom", def.nombre);
     nom.appendChild(el("div", "precio", `USD ${unit.toFixed(2).replace(".", ",")} c/u`));
@@ -833,7 +839,21 @@ async function publicarEnML(cot, precioARS, entradaHist = null) {
   }
   if (!r.ok) {
     caja.className = "aviso error";
-    caja.appendChild(el("div", null, r.error));
+    // Los errores que ML contesta en inglés se muestran explicados, con el texto
+    // original abajo: lo primero sirve para saber qué hacer y lo segundo para
+    // diagnosticar si cambia.
+    const exp = ML.explicarError(r.error);
+    if (exp) {
+      caja.appendChild(el("strong", null, exp.titulo));
+      caja.appendChild(el("div", null, exp.detalle));
+      caja.appendChild(el("div", "ml-hacer", exp.hacer));
+      caja.appendChild(el("div", "ml-crudo", `ML dijo: ${exp.original}`));
+    } else {
+      caja.appendChild(el("div", null, r.error));
+    }
+    // Sólo el 401 es problema de la clave: es lo único que la contesta (el bot
+    // responde "Clave inválida."). Ofrecer cambiarla en otros casos haría borrar
+    // una clave que anda.
     if (r.codigo === 401) {
       const b = el("button", "hist-copiar", "Cargar otra clave");
       b.onclick = () => { ML.borrarClave(); caja.hidden = true; };
@@ -1046,6 +1066,7 @@ $("embalaje").value = estado.embalaje;
 $("cliente").value = estado.cliente;
 dibujarHistorial();
 dibujarSecciones();
+montarDespacho();
 $("dolarMLEstado").textContent = guardado.mlFecha ? `editado el ${fechaCorta(guardado.mlFecha)}` : "valor inicial";
 render();
 traerDolarOficial();

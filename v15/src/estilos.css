@@ -420,3 +420,48 @@ footer { padding: 18px; text-align: center; }
 .stepper.chico button { width: 26px; height: 26px; font-size: 15px; }
 .stepper.chico span { min-width: 16px; font-size: 13px; }
 .stepper button:disabled { opacity: .4; cursor: default; }
+
+/* Explicación de un error de MercadoLibre: qué hacer arriba, el texto crudo de ML
+   abajo y más chico — sirve para diagnosticar, no para leerlo de apuro. */
+.caja-ml .ml-hacer { margin-top: 6px; font-weight: 600; }
+.caja-ml .ml-crudo {
+  margin-top: 8px; padding-top: 6px; border-top: 1px solid currentColor;
+  font-size: 11px; opacity: .75;
+}
+
+/* ── Aviso de despacho ─────────────────────────────────────────────────────── */
+.desp-adentro { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.desp-adentro .pista { margin: 0; }
+.desp-zona {
+  border: 2px dashed var(--borde2); border-radius: var(--radio);
+  padding: 22px 16px; text-align: center; color: var(--texto2);
+  transition: border-color .15s, background .15s;
+}
+.desp-zona.encima { border-color: var(--royal); background: color-mix(in srgb, var(--royal) 8%, transparent); }
+.desp-zona p { margin: 0 0 12px; font-size: 14px; }
+.desp-atajo { font-size: 12px; color: var(--texto3); margin-top: 10px; }
+.desp-zona-botones { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.desp-zona-botones button {
+  padding: 11px 18px; border-radius: 10px; border: 1px solid var(--borde2);
+  background: var(--tarjeta); color: var(--texto); font-size: 14px; cursor: pointer;
+}
+.desp-zona-botones button:hover { border-color: var(--royal); color: var(--royal); }
+.desp-foto:empty { display: none; }
+.desp-foto img { max-width: 100%; max-height: 320px; object-fit: contain; border-radius: 10px; border: 1px solid var(--borde); display: block; margin: 0 auto; }
+.desp-estado:empty { display: none; }
+.desp-estado { padding: 9px 12px; border-radius: 8px; background: var(--fondo2); color: var(--texto2); font-size: 13px; }
+#despAvisos:empty { display: none; }
+#despCampos label span { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.sello { font-style: normal; font-size: 10px; font-weight: 700; color: var(--texto3); }
+.sello.ok { color: var(--ok); }
+.sello.aviso { color: var(--aviso); }
+.desp-mensaje {
+  white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; padding: 14px;
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--fondo2); border: 1px solid var(--borde); border-radius: 10px;
+}
+.desp-cuenta { margin: -4px 0 0; font-size: 12px; color: var(--texto3); text-align: right; }
+.desp-cuenta.pasado { color: var(--error); font-weight: 700; }
+.desp-faltan:empty { display: none; }
+.desp-faltan { margin: 0; font-size: 12px; color: var(--aviso); text-align: center; }
+.desp-adentro .botonera { margin-top: 0; }

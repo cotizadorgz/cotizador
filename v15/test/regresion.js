@@ -7,6 +7,7 @@ import * as H from "../src/historial.js";
 import * as ML from "../src/mercadolibre.js";
 import * as Ficha from "../src/ficha.js";
 import { leerNumero } from "../src/motor.js";
+import * as Desp from "../src/despacho.js";
 
 const res = { ok: 0, fail: 0, casos: [], grupos: {} };
 
@@ -62,7 +63,7 @@ for (const m of L.PT)  chk("Piso torteras", m.et, m.cc, usd("pt", { enchapado: t
 {
   // Decisión #6: $25 fijo en compactos/carniceras/piso; precio real en cámara.
   const fc = cotizar(PERFILES.fc, { enchapado: true, secciones: 8, ancho: 0.5, vents: { v200: 0, v250: 0, v300: 1 } });
-  chk("Decisiones", "v300 en lateral compacto cobra $37,50 (tarifa fija)", 37.50, fc.ventiladores.total);
+  chk("Decisiones", "v300 en lateral compacto cobra $66 (precio real desde el 02/10/2026)", 66, fc.ventiladores.total);
   const cub = cotizar(PERFILES.cub, { enchapado: true, hp: 2, bateria: "5F6C", ancho: 0.9 });
   chk("Decisiones", "v300 en cúbico cobra $66 (precio real)", 132, cub.ventiladores.total);
 }
@@ -469,8 +470,9 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
 
 // ── Ventiladores a precio real ──────────────────────────────────────────────
 // 03/09/2026: en techo, laterales y doble ataque un 300mm se cobraba $37,50 —el precio
-// de un 200 o un 250—. La tarifa fija queda sólo donde se decidió el 19/08/2026:
-// lateral compacto, carniceras y piso torteras.
+// de un 200 o un 250—. El 02/10/2026 se completó con los tres que faltaban (lateral
+// compacto, carniceras y piso torteras): un 300mm sale $66 esté en el producto que esté.
+// Ningún precio publicado se mueve, porque todos los modelos de la lista llevan 200 o 250.
 {
   const V = o => ({ v200: 0, v250: 0, v300: 0, v300r: 0, ...o });
   const entradas = {
@@ -483,14 +485,12 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
     { enchapado: true, ...entradas[pid], vents: V({ [tipo]: 1 }) })
     .desglose.find(d => /ventilador/.test(d.concepto)).unitario;
 
-  // El 300mm cuesta 44 → 66. El 200 y el 250 cuestan 25 → 37,50 en todos.
-  for (const pid of ["fd", "fs", "da", "t58", "t38", "cub", "rcam"]) {
+  // El 300mm cuesta 44 → 66. El 200 y el 250 cuestan 25 → 37,50. Desde el
+  // 02/10/2026 vale en LOS 15 PRODUCTOS: ya no queda ninguno a tarifa fija.
+  for (const pid of ["fd", "fs", "da", "t58", "t38", "cub", "rcam", "fc", "car", "pt"]) {
     chk("Ventilador real", `${pid}: 300mm = 66`, 66, unitario(pid, "v300"));
     chk("Ventilador real", `${pid}: 250mm = 37,50`, 37.5, unitario(pid, "v250"));
-  }
-  // Estos tres van a tarifa fija a propósito: el 300mm sigue a 37,50.
-  for (const pid of ["fc", "car", "pt"]) {
-    chk("Ventilador real", `${pid}: sigue a tarifa fija`, 37.5, unitario(pid, "v300"));
+    chk("Ventilador real", `${pid}: 200mm = 37,50`, 37.5, unitario(pid, "v200"));
   }
   // El cambio no puede mover ningún precio publicado: esos modelos llevan 200 o 250,
   // que valen lo mismo en las dos tarifas. (Lo verifican también los grupos de arriba.)
@@ -1007,6 +1007,112 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
   const pt = MODELOS.pt.find(m => m.ancho === 1.25);
   const { et, ...e } = pt;
   chk("Catálogo → lista", `pt · ${et}`, 196.25, cotizar(PERFILES.pt, { ...e, enchapado: true }).base);
+}
+
+
+// ── Aviso de despacho ────────────────────────────────────────────────────────
+// Texto armado como lo devuelve el OCR sobre un remito de Vía Cargo, con datos
+// inventados: los remitos reales tienen domicilio, teléfono y DNI del comprador y
+// esta carpeta se publica en GitHub.
+{
+  const ocr = `GUIA No. 999012345678
+REMITO 5535-12345
+DESTINQuR1z(BUE171) DESTINO CoLoN - SAN MARTIN(ENTO24)
+Señor/esszequIPAMIENTO DE Señor/es _ JUAN PRUEBA
+Localidad MUÑIZ Localidad COLON (ENT)
+1 ENCOMIENDA 4,50 Kg $ 14.949,99
+P. REEMBOLSO $ 100.000,00 $ 6.050,00`;
+  const d = Desp.leerTexto(ocr);
+  chkOk("Aviso de despacho", "Guía del texto", d.guiaTexto === "999012345678", d.guiaTexto);
+  chkOk("Aviso de despacho", "Remito", d.remito === "5535-12345", d.remito);
+  chk("Aviso de despacho", "Peso", 4.5, d.peso);
+  chkOk("Aviso de despacho", "Destino con O por 0 y provincia", d.destino === "Colon - San Martin (ER)", d.destino);
+  chkOk("Aviso de despacho", "Destinatario", d.destinatario === "Juan Prueba", d.destinatario);
+  chk("Aviso de despacho", "Total = líneas sin el reembolso", 21000, d.totalPropuesto);
+  chk("Aviso de despacho", "Reembolso aparte", 100000, d.reembolso);
+  chkOk("Aviso de despacho", "Sin entrega a domicilio", d.domicilio === false);
+
+  const aprendido = Desp.leerTexto(ocr, { [d.destinoCrudo]: "Colón - San Martín (ER)" });
+  chkOk("Aviso de despacho", "Destino aprendido sale con acentos", aprendido.destino === "Colón - San Martín (ER)", aprendido.destino);
+
+  // A domicilio: el destino es la localidad del comprador, no la sucursal.
+  const dom = Desp.leerTexto(`DESTINO HUDSON(CDS11)
+Localidad MUÑIZ Localidad FLORENCIO VARELA
+ENCOMIENDA 7,00 Kg $ 14.472,44
+P. REEMBOLSO $ 100.000,00 $ 6.050,00
+ENTREGA A DOMICILIO $ 11.477,55
+$ 32.000,00Total`);
+  chkOk("Aviso de despacho", "Detecta entrega a domicilio", dom.domicilio === true);
+  chkOk("Aviso de despacho", "A domicilio usa la localidad", dom.destino === "Florencio Varela", dom.destino);
+  chk("Aviso de despacho", "Suma con entrega a domicilio", 32000, dom.totalPropuesto);
+  chk("Aviso de despacho", "Total impreso leído", 32000, dom.totalImpreso);
+
+  chkOk("Aviso de despacho", "Códigos LPM y NQN", Desp.formatearDestino("SANTA ROSA(LPM004)") === "Santa Rosa (LP)"
+        && Desp.formatearDestino("Chos Malal(NQN003)") === "Chos Malal (NQN)");
+
+  const datos = { guia: "999039578401", remito: "5535-52895", fecha: "27/10/2026",
+    destino: "Florencio Varela", domicilio: true, destinatario: "Juan Prueba",
+    bultos: 1, peso: "7,00", total: 32000 };
+  const esperado = [
+    "Hola! Ya despachamos tu pedido por Vía Cargo.",
+    "Guía: 999039578401", "Remito: 5535-52895", "Fecha: 27/10/2026",
+    "Destino: Florencio Varela (entrega a domicilio)", "Destinatario: Juan Prueba",
+    "1 bulto - 7 kg", "Total a abonar en destino: $32.000",
+    "Avisanos cuando lo recibas. Gracias!"].join("\n");
+  const m = Desp.mensaje(datos);
+  chkOk("Aviso de despacho", "Mensaje con el formato acordado", m === esperado, m);
+  chkOk("Aviso de despacho", "Entra en los 350 de ML", m.length <= Desp.LIMITE_ML, m.length);
+  chkOk("Aviso de despacho", "Guía con guiones", Desp.mensaje({ ...datos, guiones: true }).includes("Guía: 9990-3957-8401"));
+  chkOk("Aviso de despacho", "Sin remito ni peso: se omiten esos renglones",
+        !/Remito|kg/.test(Desp.mensaje({ ...datos, remito: "", peso: "" })));
+  chkOk("Aviso de despacho", "Plural de bultos", Desp.mensaje({ ...datos, bultos: 2, peso: "4.5" }).includes("2 bultos - 4,5 kg"));
+  // Importes como los deja el OCR de verdad (medido sobre fotos reales).
+  for (const [txt, esperado] of [["14.949,99", 14949.99], ["100,000,00", 100000], ["—14:349:99 7", 14349.99],
+                                 ["11.477.55", 11477.55], ["6.050,00 Er", 6050]]) {
+    chk("Aviso de despacho", `Importe OCR "${txt}"`, esperado, Desp.importe(txt));
+  }
+  chkOk("Aviso de despacho", "Sin separadores no se adivina", Desp.importe("14949997") === null);
+
+  // La tabla de servicios leída por zona, tal cual la devolvió el OCR.
+  const zona = Desp.leerTexto(`1 ENCOMIENDA 7,00 Kg $ 14.472,44
+P. REEMBOLSO $ 100,000,00 $ 6.050,00
+* ENTREGA A DOMICILIO $ 11.477,55`);
+  chk("Aviso de despacho", "Zona: suma sin el reembolso", 32000, zona.totalPropuesto);
+  chk("Aviso de despacho", "Zona: reembolso con comas de miles", 100000, zona.reembolso);
+  chk("Aviso de despacho", "Zona: peso", 7, zona.peso);
+  chk("Aviso de despacho", "Peso con dos puntos del OCR", 6, Desp.leerTexto("ENCOMIENDA 6:00 Kg").peso);
+  chkOk("Aviso de despacho", "DOMICILIO $ sin ENTREGA A", Desp.leerTexto("1 DOMICILIO $ 11.477,55").domicilio === true);
+  chkOk("Aviso de despacho", "Domicilio del destinatario no es entrega a domicilio",
+        Desp.leerTexto("Domicilio SAN MARTIN 1150").domicilio === false);
+  const ileg = Desp.leerTexto("1 ENCOMIENDA 6,00 Kg $ 14949997\nP| REEMBOLSO $ 100.000,00 S 6.050,00");
+  chkOk("Aviso de despacho", "Importe ilegible: avisa en vez de sumar de menos", ileg.ilegibles?.length === 1, JSON.stringify(ileg));
+
+  // La localidad un renglón arriba de la palabra, como salió en una foto real.
+  chkOk("Aviso de despacho", "Localidad en el renglón de arriba",
+        Desp.leerTexto("Teléfono 11339\n..., FLORENCIO VARELA\nLocalidad\nDNI 1").localidad === "Florencio Varela");
+  // La segunda pasada de la tabla gana si la primera dejó un importe ilegible.
+  const re = Desp.leerRemito({ hoja: "ENTREGA A DOMICILIO",
+    servicios: "1 ENCOMIENDA 7,00 Kg $ 1447244\nP. REEMBOLSO $ 100,000,00 $ 6.050,00\nENTREGA A DOMICILIO $ 11.477,55",
+    servicios2: "1 ENCOMIENDA 7,00 Kg $ 14.472,44\nP. REEMBOLSO $ 100,000,00 $ 6.050,00\nENTREGA A DOMICILIO $ 11.477,55",
+    destinatario: "..., FLORENCIO VARELA\nLocalidad" });
+  chk("Aviso de despacho", "Reintento de la tabla", 32000, re.totalPropuesto);
+  chkOk("Aviso de despacho", "Domicilio con localidad de la zona", re.destino === "Florencio Varela", re.destino);
+
+  // Las tres lecturas juntas: cada zona manda en lo suyo.
+  const junto = Desp.leerRemito({
+    hoja: "GUIA No. 999012345678\nREMITO 9535-12345\nFr N 5 Santa Rosa(LPM004)\nSeñor/eSZEQUIPAMIENTO DE Señor/es JUAN PRUEBA\n1 ENCOMIENDA 600 Kg $—14:940,09=——",
+    destinatario: "Santa Rosa(LPM004)\nDESTINO\n= Clio PRUEBA\nSeñor/es ERE\nLocalidad SANTA ROSA",
+    servicios: "1 ENCOMIENDA 6,00 — Kg $ 14.949,99 7\nP| REEMBOLSO $ 100.000,00 $ 6.050,00"
+  });
+  chkOk("Aviso de despacho", "Junto: destino limpio de la zona", junto.destino === "Santa Rosa (LP)", junto.destino);
+  chkOk("Aviso de despacho", "Junto: destinatario de la hoja", junto.destinatario === "Juan Prueba", junto.destinatario);
+  chk("Aviso de despacho", "Junto: peso de la tabla, no de la hoja", 6, junto.peso);
+  chk("Aviso de despacho", "Junto: total de la tabla", 21000, junto.totalPropuesto);
+  chkOk("Aviso de despacho", "Junto: remito de la hoja", junto.remito === "9535-12345", junto.remito);
+
+  chkOk("Aviso de despacho", "Total redondo: 21.000 sí, 20.400 no",
+        Desp.totalRedondo(21000) && Desp.totalRedondo(Math.round(20999.99)) && !Desp.totalRedondo(20400));
+  chkOk("Aviso de despacho", "Faltantes", Desp.faltantes({ guia: "1", destino: "", destinatario: "x", total: "" }).join() === "destino,total");
 }
 
 export function correr() { return res; }
