@@ -34,6 +34,7 @@ export const FAMILIA = {
   fs:   ["Evaporador Forzado Lateral Simple", "Evaporador Lateral Simple"],
   fc:   ["Evaporador Forzado Lateral Compacto", "Evaporador Lateral Compacto"],
   col:  ["Evaporador Columna Para Batea", "Evaporador Columna Batea"],
+  gon:  ["Evaporador Para Góndola Refrigerada", "Evaporador Para Góndola"],
   cub:  ["Evaporador Forzado Cúbico Para Cámara Frigorífica", "Evaporador Forzado Cúbico"],
   rcam: ["Evaporador Forzado Respaldo Para Cámara", "Evaporador Respaldo Cámara"],
   t58:  ["Evaporador Forzado De Techo Para Cámara", "Evaporador Forzado De Techo"],

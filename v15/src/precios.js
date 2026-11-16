@@ -11,9 +11,9 @@ export const PRECIOS = {
       v200: { nombre: "200mm", costo: 25 },
       v250: { nombre: "250mm", costo: 25 },
       v300: { nombre: "300mm", costo: 44 },
-      // Sólo cúbico y respaldo de cámara, por casilla. Reemplaza al ventilador
+      // Sólo cúbico, respaldo de cámara y góndola, por casilla. Reemplaza al ventilador
       // por defecto manteniendo la cantidad. 60 × 1,5 = $90.
-      v300r: { nombre: "300mm reforzado", costo: 60, soloEn: ["cub", "rcam"] }
+      v300r: { nombre: "300mm reforzado", costo: 60, soloEn: ["cub", "rcam", "gon"] }
     },
     markup: 1.5,
     // Decisión 19/08/2026: en los perfiles con tarifa "fija" el ventilador
@@ -59,6 +59,9 @@ export const PRECIOS = {
     curvasPorSeccion: 0.25,      // evaporadores y compactos
     colDistTecho38: 30,
     uniones: 8,                  // columna para batea
+    // Evaporador para góndola: arranca tildado con este importe, editable en el
+    // desglose. 30 = el col/dist del cúbico en su primer tramo (2 y 2,5HP).
+    colectorGondola: 30,
     bandeja: { 800: 43.5, 1000: 51.75 }
   },
 
@@ -87,6 +90,8 @@ export const PRECIOS = {
     // y publica 5 → 188. Los huecos de 11, 13 y 14 siguen sin dato: no se inventan,
     // el motor avisa y no cotiza.
     respaldoCamara: { 4: 156, 5: 188, 6: 218, 7: 248, 8: 275, 9: 306, 10: 339, 12: 403, 15: 467 },
+    // Evaporador para góndola, enchapado, $ por metro (16/11/2026).
+    gondola: { 6: 176, 8: 224 },
     carnicerasSimple: 139,   // 3 secciones simples
     carnicerasDoble:  156    // 4 secciones dobles
   },
@@ -126,6 +131,7 @@ export const PRECIOS = {
     fs:   { secciones: [2, 5],   ancho: [0.3, 1.5] },   // ancho (c)
     fc:   { secciones: [4, 40],  ancho: [0.2, 1.5] },   // ancho (c)
     col:  { secDobles: [1, 20],  ancho: [0.2, 9] },     // ancho (c): las columnas llegan a 9m
+    gon:  { secciones: [6, 8],   ancho: [0.2, 9] },     // provisional: mismo largo que la columna
     cub:  { ancho: [0.5, 3] },
     rcam: { secDobles: [4, 15],  ancho: [0.5, 3] },
     t58:  { secciones: [4, 20],  ancho: [0.2, 1] },     // ancho (c): nunca más de 1m

@@ -175,6 +175,26 @@ export const PERFILES = {
     adicionales: (e, P) => [{ concepto: `Uniones (${e.uniones})`, importe: e.uniones * P.adicionales.uniones, nota: `${usd(P.adicionales.uniones)} cada una` }]
   },
 
+  // 16/11/2026. Se vende como la columna para batea —por metro— pero siempre
+  // enchapado, en dos medidas fijas. El colector y distribuidor arranca tildado con
+  // el importe del panel (colectorGondola) y se puede cambiar a mano en el desglose.
+  gon: {
+    id: "gon", nombre: "Evaporador para góndola", familia: "columna",
+    aleta: "doble",
+    medida: medidaSec,
+    campos: [S("secciones","Secciones", [[6,"6"],[8,"8"]]),
+      { id: "ancho", label: "Metros", tipo: "num", step: 0.01, unidad: "m", ej: "ej. 2.00" }],
+    reforzable: true,
+    ventTarifa: "real",
+    ventDefault: e => (e.reforzado ? v("v300r", e.cantReforzados ?? 0) : sinVent()),
+    colectorDefault: P => P.adicionales.colectorGondola,
+    bateria: (e, P, av) => ({
+      concepto: `Batería enchapada ${e.secciones} sec × ${num(e.ancho)}m`,
+      importe: deTabla(P.precioMetro.gondola, e.secciones, av, "Evaporador para góndola") * e.ancho,
+      nota: `Por metro, enchapado: ${listaTabla(P.precioMetro.gondola, "", " sec")}`
+    })
+  },
+
   cub: {
     id: "cub", nombre: "Forzador cúbico de cámara", familia: "camara",
     aleta: "doble",
@@ -348,4 +368,4 @@ export const PERFILES = {
   }
 };
 
-export const ORDEN = ["ev", "oli", "resp", "fd", "fs", "fc", "col", "cub", "rcam", "t58", "t38", "car", "da", "pt", "cond"];
+export const ORDEN = ["ev", "oli", "resp", "fd", "fs", "fc", "col", "gon", "cub", "rcam", "t58", "t38", "car", "da", "pt", "cond"];

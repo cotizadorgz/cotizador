@@ -259,6 +259,7 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
     fs:   { secciones: 4, ancho: 0.5 },
     fc:   { secciones: 12, ancho: 0.36 },
     col:  { secDobles: 4, ancho: 2.3 },
+    gon:  { secciones: 6, ancho: 2 },
     cub:  { hp: 0.75, bateria: "3F4C", ancho: 0.85 },
     rcam: { hp: 0.5, secDobles: 4, ancho: 1 },
     t58:  { secciones: 6, ancho: 0.35, bandeja: 800 },
@@ -270,7 +271,7 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
   };
   const esperados = {
     ev: 97.50, oli: 100.25, resp: 77.00, fd: 115.50, fs: 133.50, fc: 144.18,
-    col: 220.80, cub: 263.70, rcam: 231, t58: 147.40, t38: 232.60,
+    col: 220.80, gon: 352, cub: 263.70, rcam: 231, t58: 147.40, t38: 232.60,
     car: 241.80, da: 195.80, pt: 152.60, cond: 64.80
   };
   for (const pid of ORDEN) {
@@ -408,7 +409,7 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
   const entradas = {
     ev:{secciones:6,ancho:0.5}, oli:{secciones:12,ancho:0.5}, resp:{secciones:4,ancho:0.6},
     fd:{secciones:4,ancho:0.5}, fs:{secciones:4,ancho:0.5}, fc:{secciones:12,ancho:0.36},
-    col:{secDobles:4,ancho:2.3,uniones:0}, cub:{hp:2,bateria:"5F6C",ancho:0.9},
+    col:{secDobles:4,ancho:2.3,uniones:0}, gon:{secciones:8,ancho:1.5}, cub:{hp:2,bateria:"5F6C",ancho:0.9},
     rcam:{hp:2,secDobles:10,ancho:1.2}, t58:{secciones:6,ancho:0.35,bandeja:800},
     t38:{secciones:16,ancho:0.33,bandeja:800}, car:{dobles:false,ancho:1.2,cantVent:2},
     da:{secciones:5,ancho:0.6}, pt:{secciones:3,ancho:1.25}, cond:{hp:0.5}
@@ -676,7 +677,7 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
   const peor = {
     ev:{secciones:20,ancho:3}, oli:{secciones:40,ancho:3}, resp:{secciones:20,ancho:3},
     fd:{secciones:7,ancho:1.5}, fs:{secciones:5,ancho:1.5}, fc:{secciones:40,ancho:1.5},
-    col:{secDobles:20,ancho:9,uniones:0}, cub:{hp:2.5,bateria:"5F6C",ancho:3},
+    col:{secDobles:20,ancho:9,uniones:0}, gon:{secciones:8,ancho:9}, cub:{hp:2.5,bateria:"5F6C",ancho:3},
     rcam:{hp:1.5,secDobles:15,ancho:3}, t58:{hp:0.75,secciones:20,ancho:1,bandeja:1000},
     t38:{hp:0.33,secciones:60,ancho:1,bandeja:800}, car:{dobles:true,ancho:3,cantVent:4},
     da:{secciones:7,ancho:0.8}, pt:{hp:0.75,secciones:4,ancho:2.5}, cond:{hp:0.25}
@@ -788,7 +789,7 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
 
   // Cada producto con su aleta
   const aletas = { ev:"simple", oli:"compacta", resp:"simple", fd:"doble", fs:"simple",
-    fc:"compacta", col:"doble", cub:"doble", rcam:"doble", t58:"doble", t38:"compacta",
+    fc:"compacta", col:"doble", gon:"doble", cub:"doble", rcam:"doble", t58:"doble", t38:"compacta",
     da:"doble", pt:"doble", cond:"compacta" };
   for (const [pid, esperada] of Object.entries(aletas)) {
     chkOk("Ficha técnica", `${pid} lleva aleta ${esperada}`,
@@ -829,7 +830,7 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
   // Los 15 productos: o dan ficha o la niegan, nunca a medias
   const casos = { ev:{secciones:6,ancho:0.5}, oli:{secciones:12,ancho:0.5}, resp:{secciones:9,ancho:0.6},
     fd:{secciones:4,ancho:0.5}, fs:{secciones:4,ancho:0.5}, fc:{secciones:12,ancho:0.36},
-    col:{secDobles:4,ancho:2.3}, cub:{hp:4,bateria:"6F6C",ancho:1.5}, rcam:{hp:3,secDobles:15,ancho:1.4},
+    col:{secDobles:4,ancho:2.3}, gon:{secciones:6,ancho:2}, cub:{hp:4,bateria:"6F6C",ancho:1.5}, rcam:{hp:3,secDobles:15,ancho:1.4},
     t58:{hp:0.75,secciones:8,ancho:0.35,bandeja:1000}, t38:{hp:0.5,secciones:24,ancho:0.33,bandeja:800},
     car:{dobles:true,ancho:2.2,cantVent:4}, da:{secciones:6,ancho:0.6},
     pt:{hp:0.5,secciones:3,ancho:1.25}, cond:{hp:0.5} };
@@ -1113,6 +1114,43 @@ P. REEMBOLSO $ 100,000,00 $ 6.050,00
   chkOk("Aviso de despacho", "Total redondo: 21.000 sí, 20.400 no",
         Desp.totalRedondo(21000) && Desp.totalRedondo(Math.round(20999.99)) && !Desp.totalRedondo(20400));
   chkOk("Aviso de despacho", "Faltantes", Desp.faltantes({ guia: "1", destino: "", destinatario: "x", total: "" }).join() === "destino,total");
+}
+
+
+// ── Evaporador para góndola (16/11/2026) ─────────────────────────────────────
+// Por metro como la columna, siempre enchapado: 6 sec $176/m, 8 sec $224/m.
+{
+  const G = PERFILES.gon;
+  chk("Góndola", "6 sec × 1m", 176, cotizar(G, { secciones: 6, ancho: 1 }).base);
+  chk("Góndola", "8 sec × 1m", 224, cotizar(G, { secciones: 8, ancho: 1 }).base);
+  chk("Góndola", "6 sec × 2,5m", 440, cotizar(G, { secciones: 6, ancho: 2.5 }).base);
+  chk("Góndola", "8 sec × 3m", 672, cotizar(G, { secciones: 8, ancho: 3 }).base);
+  chkOk("Góndola", "7 secciones no cotiza", cotizar(G, { secciones: 7, ancho: 1 }).avisos.some(a => a.nivel === "error"));
+  chkOk("Góndola", "Va después de la columna en la grilla", ORDEN.indexOf("gon") === ORDEN.indexOf("col") + 1);
+  chkOk("Góndola", "Sin casilla de enchapado: siempre enchapado", !G.chapa);
+  chkOk("Góndola", "Arranca sin ventiladores", Object.values(G.ventDefault({}, PRECIOS)).every(n => !n));
+
+  // Colector y distribuidor: tildado por defecto con el importe del panel, editable.
+  chk("Góndola", "Colector por defecto = $30", 30, G.colectorDefault(PRECIOS));
+  chkOk("Góndola", "Los demás productos no traen colector", ORDEN.filter(p => p !== "gon").every(p => !PERFILES[p].colectorDefault));
+  chk("Góndola", "Con colector por defecto", 176 + 30, cotizar(G, { secciones: 6, ancho: 1, colector: 30 }).base);
+  chk("Góndola", "Con colector cambiado a mano", 176 + 45, cotizar(G, { secciones: 6, ancho: 1, colector: 45 }).base);
+
+  // Ventiladores: los mismos precios que el resto (300 a precio real) y reforzados.
+  const conV = vents => cotizar(G, { secciones: 6, ancho: 1, vents: { v200: 0, v250: 0, v300: 0, v300r: 0, ...vents } }).base - 176;
+  chk("Góndola", "1 × 200mm = $37,50", 37.5, conV({ v200: 1 }));
+  chk("Góndola", "1 × 250mm = $37,50", 37.5, conV({ v250: 1 }));
+  chk("Góndola", "1 × 300mm = $66", 66, conV({ v300: 1 }));
+  chk("Góndola", "2 × 300mm reforzado = $180", 180,
+      cotizar(G, { secciones: 6, ancho: 1, reforzado: true, cantReforzados: 2 }).base - 176);
+  chkOk("Góndola", "Admite reforzados sin aviso", cotizar(G, { secciones: 6, ancho: 1, reforzado: true, cantReforzados: 1 }).avisos.length === 0);
+
+  const c = cotizar(G, { secciones: 6, ancho: 2, colector: 30 });
+  const titulo = ML.tituloML("gon", c.entrada, G);
+  chkOk("Góndola", "Título de ML", titulo.startsWith("Evaporador Para Góndola") && titulo.length <= 60, titulo);
+  chkOk("Góndola", "Texto al cliente con medida y colector",
+        etiquetaCliente(G, c.entrada).includes("6 sec x 2") && etiquetaCliente(G, c.entrada).includes("colector"),
+        etiquetaCliente(G, c.entrada));
 }
 
 export function correr() { return res; }

@@ -10,7 +10,7 @@ import { montarDespacho } from "./despacho-app.js";
 
 // Se sube a mano en cada publicación. Sirve para confirmar de un vistazo que el
 // navegador cargó la versión nueva y no una copia guardada.
-export const VERSION = "17.2";
+export const VERSION = "17.3";
 
 const $ = id => document.getElementById(id);
 const fmtHPtexto = h => ({ 0.25: "1/4", 0.33: "1/3", 0.5: "1/2", 0.75: "3/4" })[h] || String(h).replace(".", ",");
@@ -109,6 +109,8 @@ function elegirProducto(pid) {
   estado.modo = tieneCatalogo(pid) ? "modelo" : "libre";
   estado.modelo = 0;
   estado.vents = null;
+  estado.colectorActivo = !!PERFILES[pid].colectorDefault;
+  estado.colectorMonto = PERFILES[pid].colectorDefault ? PERFILES[pid].colectorDefault(PRECIOS) : 0;
   $("cantidad").value = 1;   // la cantidad es de cada ítem, no se arrastra
   // Los valores por defecto del perfil (por ejemplo uniones: 0) tienen que llegar
   // al formulario: si no, el campo queda vacío y Calcular no se habilita nunca.
@@ -382,7 +384,8 @@ function dibujarResultado(cot) {
     tr.appendChild(el("td", null, fmtUSD(linea.importe)));
     tabla.appendChild(tr);
   }
-  // Colector y distribuidor: destildado por defecto, con el importe a mano.
+  // Colector y distribuidor: destildado por defecto, con el importe a mano. La góndola
+  // lo trae tildado (colectorDefault del perfil).
   {
     const tr = el("tr", "fila-colector");
     const celda = el("td", "col-tilde");
@@ -892,7 +895,12 @@ let ultima = null;
 function invalidar() {
   estado.calculado = false;
   estado.excluidos = [];   // cambian los componentes: los tildes vuelven a empezar
-  estado.colectorActivo = false; estado.colectorMonto = 0; estado.coolerCant = 0;
+  // Los productos que traen colector de fábrica (la góndola) arrancan con la casilla
+  // tildada y el importe del panel; igual se puede destildar o cambiar el monto.
+  const colDef = estado.pid && PERFILES[estado.pid].colectorDefault;
+  estado.colectorActivo = !!colDef;
+  estado.colectorMonto = colDef ? colDef(PRECIOS) : 0;
+  estado.coolerCant = 0;
   estado.extras = [{ activo: false, nombre: "", monto: 0 }];
   ultima = null;
   $("resultado").hidden = true;
