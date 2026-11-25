@@ -990,6 +990,13 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
   chkOk("Condensadores", "Nombra la cantidad real de ventiladores",
         dos === "Condensador 1/3HP — con 2 ventiladores de 200mm", dos);
   chkOk("Condensadores", "El 1/4HP se escribe como fracción", et({ hp: 0.25 }).includes("1/4HP"));
+  // 25/11/2026: "Copiar para el cliente" no copiaba con ventilador porque el historial
+  // arma la descripción de ML y ahí la casilla se leía sin la lista de precios.
+  let desc = null, err = null;
+  try { desc = ML.descripcionML(PERFILES.cond, cotizar(PERFILES.cond, { hp: 0.33, conVentilador: true, conBase: true })); }
+  catch (x) { err = String(x); }
+  chkOk("Condensadores", "La descripción de ML con ventilador no rompe",
+        !!desc && desc.includes("Con ventilador de 200mm"), err || desc);
 }
 
 // El catálogo que ve el usuario en el desplegable tiene que dar el precio publicado.

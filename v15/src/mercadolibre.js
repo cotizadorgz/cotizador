@@ -3,6 +3,7 @@
 // plantilla. Acá sólo se arma el pedido y se muestra lo que responde.
 
 import { fmtHP, itemsLibres, cantCoolers } from "./motor.js";
+import { PRECIOS } from "./precios.js";
 
 export const ML = {
   url: "https://gzbot.duckdns.org/publicar",
@@ -92,7 +93,7 @@ export function descripcionML(perfil, cot, vence = vencimiento()) {
   for (const libre of itemsLibres(e)) aclara.push(`con ${libre.nombre.toLowerCase()}`);
   for (const o of perfil.opciones || []) {
     const t = e[o.id] ? o.si : o.no;
-    if (t) aclara.push((e[o.id] ? "con " : "sin ") + (typeof t === "function" ? t(e) : t));
+    if (t) aclara.push((e[o.id] ? "con " : "sin ") + (typeof t === "function" ? t(e, PRECIOS) : t));
   }
   if (cot.noIncluye?.length) aclara.push(`no incluye ${cot.noIncluye.map(x => x.toLowerCase()).join(", ")}`);
   if (e.cantidad > 1) aclara.push(`${e.cantidad} unidades`);

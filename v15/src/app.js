@@ -10,7 +10,7 @@ import { montarDespacho } from "./despacho-app.js";
 
 // Se sube a mano en cada publicación. Sirve para confirmar de un vistazo que el
 // navegador cargó la versión nueva y no una copia guardada.
-export const VERSION = "17.3";
+export const VERSION = "17.4";
 
 const $ = id => document.getElementById(id);
 const fmtHPtexto = h => ({ 0.25: "1/4", 0.33: "1/3", 0.5: "1/2", 0.75: "3/4" })[h] || String(h).replace(".", ",");
@@ -536,9 +536,11 @@ function dibujarFicha(cot) {
   }
 
   const d = Ficha.datos(perfil, cot, PRECIOS, estado.hpFicha);
+  // El condensador tiene frigorías pero no superficie (no tiene medida).
+  const m2 = d.superficie == null ? null : `${d.superficie.toFixed(1).replace(".", ",")} m²`;
   $("resumenFicha").textContent = d.frigorias
-    ? `${d.frigorias.toLocaleString("es-AR")} frig/h · ${d.superficie.toFixed(1).replace(".", ",")} m²`
-    : `${d.superficie.toFixed(1).replace(".", ",")} m² de intercambio`;
+    ? `${d.frigorias.toLocaleString("es-AR")} frig/h` + (m2 ? ` · ${m2}` : "")
+    : `${m2} de intercambio`;
   const t = $("fichaTabla"); t.innerHTML = "";
   for (const [k, v] of f) {
     const tr = el("tr");
