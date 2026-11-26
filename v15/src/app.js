@@ -10,7 +10,7 @@ import { montarDespacho } from "./despacho-app.js";
 
 // Se sube a mano en cada publicación. Sirve para confirmar de un vistazo que el
 // navegador cargó la versión nueva y no una copia guardada.
-export const VERSION = "17.4";
+export const VERSION = "17.5";
 
 const $ = id => document.getElementById(id);
 const fmtHPtexto = h => ({ 0.25: "1/4", 0.33: "1/3", 0.5: "1/2", 0.75: "3/4" })[h] || String(h).replace(".", ",");
@@ -385,8 +385,8 @@ function dibujarResultado(cot) {
     tabla.appendChild(tr);
   }
   // Colector y distribuidor: destildado por defecto, con el importe a mano. La góndola
-  // lo trae tildado (colectorDefault del perfil).
-  {
+  // lo trae tildado (colectorDefault del perfil). Los accesorios no lo llevan.
+  if (!perfilActual().accesorio) {
     const tr = el("tr", "fila-colector");
     const celda = el("td", "col-tilde");
     const chk = el("input"); chk.type = "checkbox"; chk.checked = estado.colectorActivo;
@@ -409,7 +409,7 @@ function dibujarResultado(cot) {
   }
   // Coolers: importe fijo del panel, con cantidad, en los 15 productos. La cantidad
   // manda: 0 es apagado, y la casilla no es más que un atajo para prenderlo y apagarlo.
-  {
+  if (!perfilActual().accesorio) {
     const cant = estado.coolerCant;
     const fijar = n => { estado.coolerCant = Math.max(0, n); recalcular(); };
     const tr = el("tr", "fila-colector");
@@ -567,7 +567,7 @@ function dibujarPrecios(cot) {
       estado.filas.has(fila.id) ? estado.filas.delete(fila.id) : estado.filas.add(fila.id);
       render();
     };
-    if (fila.id === "ml" && fila.ars) {
+    if (fila.id === "ml" && fila.ars && !perfilActual().accesorio) {
       const b = el("button", "btn-ml", "Publicar");
       b.title = "Crear la publicación en MercadoLibre";
       b.onclick = ev => { ev.stopPropagation(); publicarEnML(cot, fila.ars); };

@@ -43,7 +43,8 @@ export const FAMILIA = {
   car:  ["Evaporador Respaldo Para Carnicera", "Evaporador Respaldo Carnicera"],
   da:   ["Evaporador Forzado Doble Ataque", "Evaporador Doble Ataque"],
   pt:   ["Evaporador Forzado De Piso Para Torteras", "Evaporador De Piso Torteras"],
-  cond: ["Condensador Para Refrigeración", "Condensador"]
+  cond: ["Condensador Para Refrigeración", "Condensador"],
+  sop:  ["Soporte Para Ventilador", "Soporte Ventilador"]   // no se publica: es sólo por si acaso
 };
 
 const hpTexto = hp => `${fmtHP(hp)} Hp`;

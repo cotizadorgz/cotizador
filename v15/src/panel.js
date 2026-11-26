@@ -26,6 +26,7 @@ const GRUPOS = {
   bateriaCubicoEnchapado: "Batería del cúbico enchapado ($/metro)",
   precioMetro: "Precio por metro — tablas enchapadas",
   condensadores: "Condensadores",
+  soportes: "Soportes y defensas (precio final)",
   ajustes: "Ajustes nombrados",
   rangos: "Rangos válidos",
   bajaTemperatura: "Baja temperatura",

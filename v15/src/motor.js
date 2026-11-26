@@ -256,7 +256,8 @@ export const fmtM = n => Number(n).toFixed(2).replace(".", ",");
 export const fmtUSD = n => "USD " + n.toFixed(2).replace(".", ",");
 
 export function etiquetaCliente(perfil, e, P = PRECIOS) {
-  let t = perfil.nombre;
+  // Un perfil puede nombrarse según lo elegido (soportes y defensas).
+  let t = perfil.etiqueta ? perfil.etiqueta(e) : perfil.nombre;
   if (e.hp) t += ` ${fmtHP(e.hp)}HP`;
   if (e.modelo) t += ` ${e.modelo}`;
   // Algunos productos se identifican por la medida y otros no: lo decide el perfil.

@@ -1,0 +1,9 @@
+{
+  "name": "cotizador-gz",
+  "version": "15.0.0-alpha",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node test/regresion.js"
+  }
+}

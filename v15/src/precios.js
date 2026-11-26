@@ -104,6 +104,13 @@ export const PRECIOS = {
     ventilador: { 0.25: "v200", 0.33: "v200", 0.5: "v200", 0.75: "v300", 1: "v300" }
   },
 
+  // Soportes y defensas de ventilador (26/11/2026). Categoría aparte: se venden
+  // sueltos, por tamaño. Van a PRECIO FINAL — sin el ×1,5 de los ventiladores.
+  soportes: {
+    soporte: { 200: 4, 250: 4, 300: 8 },
+    defensa: { 200: 4, 250: 4, 300: 8 }
+  },
+
   // Ajustes nombrados: diferencias contra la lista publicada que no tienen fórmula.
   // Se suman al final y se muestran con nombre en el desglose. Borrables desde el panel.
   ajustes: [

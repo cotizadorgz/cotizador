@@ -55,6 +55,13 @@ function deTabla(tabla, clave, avisos, que) {
   return val;
 }
 
+const PIEZA_TEXTO = { soporte: "Soporte", defensa: "Defensa", ambos: "Soporte y defensa" };
+const piezaSoporte = (pieza, e, P, av) => ({
+  concepto: `${PIEZA_TEXTO[pieza]} ${e.tam}mm`,
+  importe: deTabla(P.soportes[pieza], e.tam, av, PIEZA_TEXTO[pieza]),
+  nota: `${listaTabla(P.soportes[pieza], "", "mm")} · precio final, sin markup`
+});
+
 export const PERFILES = {
 
   ev: {
@@ -347,6 +354,25 @@ export const PERFILES = {
       : []
   },
 
+  // Soportes y defensas de ventilador (26/11/2026). Pieza suelta, a precio final:
+  // sin ventiladores, sin ficha técnica, sin colector ni cooler, y no se publica en ML.
+  // "Soporte + defensa" sale en dos renglones, así cualquiera de los dos se puede sacar.
+  sop: {
+    id: "sop", nombre: "Soportes y defensas", familia: "accesorio",
+    accesorio: true,
+    campos: [
+      S("pieza", "Pieza", [["soporte", "Soporte"], ["defensa", "Defensa"], ["ambos", "Soporte + defensa"]]),
+      S("tam", "Tamaño", [[200, "200mm"], [250, "250mm"], [300, "300mm"]])
+    ],
+    etiqueta: e => `${PIEZA_TEXTO[e.pieza] || "Soporte"} para ventilador ${e.tam}mm`,
+    bateria: (e, P, av) => {
+      if (!PIEZA_TEXTO[e.pieza]) av.push({ nivel: "error", msg: `Pieza desconocida: ${e.pieza}` });
+      const pieza = e.pieza === "defensa" ? "defensa" : "soporte";
+      return piezaSoporte(pieza, e, P, av);
+    },
+    adicionales: (e, P, av) => (e.pieza === "ambos" ? [piezaSoporte("defensa", e, P, av)] : [])
+  },
+
   pt: {
     id: "pt", nombre: "Forzador de piso para torteras", familia: "piso",
     aleta: "doble",
@@ -368,4 +394,4 @@ export const PERFILES = {
   }
 };
 
-export const ORDEN = ["ev", "oli", "resp", "fd", "fs", "fc", "col", "gon", "cub", "rcam", "t58", "t38", "car", "da", "pt", "cond"];
+export const ORDEN = ["ev", "oli", "resp", "fd", "fs", "fc", "col", "gon", "cub", "rcam", "t58", "t38", "car", "da", "pt", "cond", "sop"];

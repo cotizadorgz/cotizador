@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0D2D6E">
+<title>Prueba — evaporadores a medida</title>
+<link rel="icon" href="icono-192.png" type="image/png">
+<link rel="stylesheet" href="src/estilos.css">
+<!-- Página de PRUEBA. No lleva manifest ni service worker a propósito: no es parte
+     de la app instalada y no tiene que aparecer en la PWA ni cachearse como tal. -->
+<style>
+  .prueba-cab { background: linear-gradient(135deg, #6a4a00, #a87400); }
+  .etiqueta-prueba {
+    display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 20px;
+    background: rgba(255,255,255,.22); font-size: 11px; font-weight: 700;
+    letter-spacing: .5px; vertical-align: middle;
+  }
+  .bloque { margin-bottom: 14px; }
+  .bloque h3 {
+    margin: 0 0 8px; font-size: 12px; color: var(--texto2); font-weight: 700;
+    text-transform: uppercase; letter-spacing: .7px;
+  }
+  .datos { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .datos td { padding: 6px 0; border-bottom: 1px solid var(--borde); vertical-align: top; }
+  .datos td:first-child { width: 40%; color: var(--texto2); font-size: 13px; }
+  .datos tr:last-child td { border-bottom: 0; }
+  .datos .ok { color: var(--ok); font-weight: 600; }
+  .datos .mal { color: var(--error); font-weight: 600; }
+  .datos .detalle { margin-top: 2px; font-size: 11px; color: var(--texto3); font-weight: 400; }
+  #cotizaComo { font-size: 13px; color: var(--royal); font-weight: 600; margin: 0 0 8px; }
+  #desglose td.mal { color: var(--error); font-weight: 600; }
+  .campos label span em.tocado { font-style: normal; color: var(--aviso); font-weight: 700; }
+  .tit-resultado { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  #resumenPrueba { font-size: 12px; font-weight: 400; color: var(--texto3);
+                   text-align: right; text-transform: none; letter-spacing: 0; }
+</style>
+</head>
+<body>
+
+<header class="cab prueba-cab">
+  <div class="cab-tit">
+    <div>
+      <h1>Evaporadores a medida<span class="etiqueta-prueba">PRUEBA</span></h1>
+      <p class="sub" id="dolarPrueba"></p>
+    </div>
+  </div>
+  <p class="sub" style="margin-top:8px">
+    Página aparte para probar. No toca la calculadora ni lo que está publicado:
+    usa tus precios del panel, pero no guarda nada en el historial ni en el presupuesto.
+  </p>
+</header>
+
+<main>
+
+  <section class="tarjeta">
+    <details class="caja-desglose">
+      <summary><span>Números de prueba</span><span id="resumenNumeros"></span></summary>
+      <div class="secc-adentro">
+        <p class="pista pista-izq">Estos todavía no están en el panel de precios: se tocan
+          acá mientras decidimos cuánto valen. Se guardan en este dispositivo.</p>
+        <div id="numerosCuerpo"></div>
+      </div>
+    </details>
+  </section>
+
+  <section class="tarjeta">
+    <h2>Lo que pide el cliente</h2>
+    <div class="bloque">
+      <div id="relevamiento" class="campos"></div>
+    </div>
+    <div class="bloque">
+      <h3>Hueco donde va el evaporador</h3>
+      <div id="hueco" class="campos"></div>
+    </div>
+  </section>
+
+  <section class="tarjeta">
+    <h2>El equipo</h2>
+    <div id="diseno" class="campos"></div>
+    <div id="opciones" class="opciones"></div>
+    <div class="panel-acciones" style="margin-top:14px">
+      <button id="btnEjemplo" type="button">Cargar el ejemplo de Acosta</button>
+    </div>
+  </section>
+
+  <p id="pendiente" class="pista" hidden>
+    Cargá la batería (ej. <strong>3F8C</strong>) y el largo codo a codo para ver el resultado.
+  </p>
+
+  <section class="tarjeta" id="resultado" hidden>
+    <h2 class="tit-resultado">Resultado <span id="resumenPrueba"></span></h2>
+
+    <div class="bloque">
+      <h3>Geometría y potencia</h3>
+      <table class="datos" id="geometria"></table>
+    </div>
+
+    <div class="bloque">
+      <h3>¿Entra en el hueco?</h3>
+      <table class="datos" id="encaje"></table>
+      <p class="pista pista-izq" style="margin-top:8px">Se mide el conjunto terminado
+        —paquete, coolers y bandeja—, no el paquete pelado.</p>
+    </div>
+
+    <div class="bloque">
+      <h3>Cotización</h3>
+      <div id="avisos"></div>
+      <p id="cotizaComo"></p>
+      <table class="desglose" id="desglose"></table>
+      <div class="precios" id="precios"></div>
+    </div>
+
+    <div class="botonera">
+      <button class="copiar" id="btnTaller" type="button">Copiar para el taller</button>
+      <button class="copiar secundario" id="btnRelevamiento" type="button">Copiar el relevamiento</button>
+    </div>
+  </section>
+
+  <p class="pista"><a href="index.html">← Volver al cotizador</a></p>
+
+</main>
+
+<script type="module" src="src/amedida-prueba.js"></script>
+</body>
+</html>

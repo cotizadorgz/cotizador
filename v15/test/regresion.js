@@ -9,6 +9,10 @@ import * as Ficha from "../src/ficha.js";
 import { leerNumero } from "../src/motor.js";
 import * as Desp from "../src/despacho.js";
 
+// Los equipos: todo lo de la grilla menos los accesorios (soportes y defensas),
+// que no tienen medida, ventiladores ni ficha.
+const EQUIPOS = ORDEN.filter(p => !PERFILES[p].accesorio);
+
 const res = { ok: 0, fail: 0, casos: [], grupos: {} };
 
 function chk(grupo, etiqueta, esperado, obtenido, extra = "") {
@@ -274,7 +278,7 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
     col: 220.80, gon: 352, cub: 263.70, rcam: 231, t58: 147.40, t38: 232.60,
     car: 241.80, da: 195.80, pt: 152.60, cond: 64.80
   };
-  for (const pid of ORDEN) {
+  for (const pid of EQUIPOS) {
     const c = cotizar(PERFILES[pid], { enchapado: true, ...entradas[pid] });
     chk("Todos cotizan", `${PERFILES[pid].nombre}`, esperados[pid], c.base);
     chkOk("Todos cotizan", `${pid} sin avisos`, c.avisos.length === 0, c.avisos.map(a => a.msg).join(" | "));
@@ -415,7 +419,7 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
     da:{secciones:5,ancho:0.6}, pt:{secciones:3,ancho:1.25}, cond:{hp:0.5}
   };
   // Está en los 15 y suma siempre lo mismo, sin importar el producto.
-  for (const pid of ORDEN) {
+  for (const pid of EQUIPOS) {
     const base = { enchapado: true, ...entradas[pid] };
     const sin = cotizar(PERFILES[pid], base);
     const con = cotizar(PERFILES[pid], { ...base, cooler: true });
@@ -578,7 +582,7 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
 
   // Ningún producto con aleta puede quedar afuera de la tarjeta.
   const dentro = new Set(R.flatMap(s => s.productos.map(t => t.replace(/ \(.*\)$/, ""))));
-  for (const pid of ORDEN) {
+  for (const pid of EQUIPOS) {
     if (!PERFILES[pid].aleta) continue;
     chkOk("Las tres secciones", `${pid} figura en alguna sección`, dentro.has(PERFILES[pid].nombre));
   }
@@ -683,7 +687,7 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
     da:{secciones:7,ancho:0.8}, pt:{hp:0.75,secciones:4,ancho:2.5}, cond:{hp:0.25}
   };
   let mayor = 0;
-  for (const pid of ORDEN) {
+  for (const pid of EQUIPOS) {
     const c = cotizar(PERFILES[pid], { enchapado: true, ...peor[pid] });
     const t = ML.tituloML(pid, c.entrada, PERFILES[pid]);
     mayor = Math.max(mayor, t.length);
@@ -834,7 +838,7 @@ function chkOk(grupo, etiqueta, cond, extra = "") {
     t58:{hp:0.75,secciones:8,ancho:0.35,bandeja:1000}, t38:{hp:0.5,secciones:24,ancho:0.33,bandeja:800},
     car:{dobles:true,ancho:2.2,cantVent:4}, da:{secciones:6,ancho:0.6},
     pt:{hp:0.5,secciones:3,ancho:1.25}, cond:{hp:0.5} };
-  for (const pid of ORDEN) {
+  for (const pid of EQUIPOS) {
     const c = cotizar(PERFILES[pid], { enchapado: true, ...casos[pid] });
     const f = Ficha.filas(PERFILES[pid], c);
     const d = f && Ficha.datos(PERFILES[pid], c);
@@ -1161,3 +1165,37 @@ P. REEMBOLSO $ 100,000,00 $ 6.050,00
 }
 
 export function correr() { return res; }
+
+// ── Soportes y defensas (26/11/2026) ─────────────────────────────────────────
+// Categoría aparte, a precio final: 200 y 250 → USD 4, 300 → USD 8, cada pieza.
+{
+  const G = "Soportes y defensas";
+  const sop = PERFILES.sop;
+  chkOk(G, "Está en la grilla", ORDEN.includes("sop"));
+  const esperado = { 200: 4, 250: 4, 300: 8 };
+  for (const tam of [200, 250, 300]) {
+    const s = cotizar(sop, { pieza: "soporte", tam });
+    const d = cotizar(sop, { pieza: "defensa", tam });
+    const a = cotizar(sop, { pieza: "ambos", tam });
+    chk(G, `Soporte ${tam}mm`, esperado[tam], s.total);
+    chk(G, `Defensa ${tam}mm`, esperado[tam], d.total);
+    chk(G, `Soporte + defensa ${tam}mm`, esperado[tam] * 2, a.total);
+    chkOk(G, `${tam}mm sin avisos`, !s.avisos.length && !d.avisos.length && !a.avisos.length);
+    chkOk(G, `${tam}mm: el combo sale en dos renglones`, a.desglose.length === 2);
+    chkOk(G, `${tam}mm: sin ventiladores`, s.ventiladores.items.length === 0);
+  }
+  chk(G, "Cantidad multiplica", 24, cotizar(sop, { pieza: "soporte", tam: 300, cantidad: 3 }).total);
+  const sinDef = cotizar(sop, { pieza: "ambos", tam: 300, excluidos: ["Defensa 300mm"] });
+  chk(G, "Se puede sacar la defensa del combo", 8, sinDef.total);
+  const et = e => etiquetaCliente(sop, cotizar(sop, e).entrada);
+  chkOk(G, "Etiqueta del soporte", et({ pieza: "soporte", tam: 200 }) === "Soporte para ventilador 200mm", et({ pieza: "soporte", tam: 200 }));
+  chkOk(G, "Etiqueta del combo con cantidad",
+        et({ pieza: "ambos", tam: 250, cantidad: 2 }) === "Soporte y defensa para ventilador 250mm (2 unidades)",
+        et({ pieza: "ambos", tam: 250, cantidad: 2 }));
+  chkOk(G, "Sin ficha técnica", Ficha.filas(sop, cotizar(sop, { pieza: "soporte", tam: 200 })) === null);
+  chkOk(G, "Tamaño fuera de tabla avisa", cotizar(sop, { pieza: "soporte", tam: 350 }).avisos.length > 0);
+  chkOk(G, "Pieza desconocida avisa", cotizar(sop, { pieza: "otra", tam: 200 }).avisos.length > 0);
+  // Los precios salen del panel
+  const P2 = structuredClone(PRECIOS); P2.soportes.defensa[300] = 9;
+  chk(G, "El precio sale del panel", 9, cotizar(sop, { pieza: "defensa", tam: 300 }, P2).total);
+}
